@@ -1,0 +1,78 @@
+# Sprint 1 API Contract — Smart Attendance System (Multi-Module)  
+**Version:** 1.0  
+**Date:** 2026-02-25  
+**Scope:** Sprint 1 (NO hardware yet — simulated scan via web).  
+**Future-proof:** Raspberry Pi RFID (Sprint 2) + Facial Recognition checker (later).
+
+---
+
+## 1) Overview
+
+This API supports:
+- Student + Card assignment (1 card per student)
+- Modules + Enrolments (multi-module)
+- Sessions (create + start active session)
+- Attendance scanning (simulated now; Raspberry Pi later)
+- Live attendance list per session
+
+### Base URL
+`/api`
+
+### Content Type
+Requests and responses use JSON:
+- `Content-Type: application/json`
+
+### Authentication
+- **Sprint 1:** No authentication
+- **Sprint 2+ (planned):** JWT/session login + roles (admin/lecturer)
+
+### Time Format
+ISO 8601 string:
+- `2026-02-25T10:05:12`
+
+### Active Session Policy (Sprint 1 to keep it easy)
+- **Only ONE active session at a time (system-wide).**
+- If you start another session while one is active, API returns `409`.
+
+---
+
+## 2) Entities & Core Rules
+
+### Student
+- Uniquely identified by `student_id`
+- `student_number` must be unique
+
+### Card
+- Each physical card has a unique `card_uid`
+- **Sprint 1 rule:** each student can have **only one card** (strict 1:1)
+  - `card_uid` unique
+  - one student cannot receive another card unless you remove old one (not in Sprint 1)
+
+### Module
+- `module_code` unique
+
+### Enrolment
+- Many-to-many between Student and Module
+- Unique pair (`student_id`, `module_id`)
+
+### Session
+- Belongs to a module
+- Has status: `scheduled | active | closed`
+- Sprint 1: only one session can be `active`
+
+### Attendance
+- A scan marks presence for **active session**
+- Scan outcomes:
+  - `accepted`
+  - `duplicate`
+  - `rejected_no_active_session`
+  - `rejected_unknown_card`
+  - `rejected_not_enrolled`
+
+---
+
+## 3) Standard Responses
+
+### Success example
+```json
+{ "message": "OK" }
