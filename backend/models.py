@@ -30,7 +30,7 @@ class Enrolment(db.Model):
     enrolment_id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey("students.student_id"), nullable=False)
     module_id = db.Column(db.Integer, db.ForeignKey("modules.module_id"), nullable=False)
-    enrolled_at = db.Column(db.DateTime, default=datetime.utcnow)
+    enrolled_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     __table_args__ = (
         db.UniqueConstraint("student_id", "module_id", name="uq_student_module"),
