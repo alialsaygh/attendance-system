@@ -1,0 +1,307 @@
+{
+	"info": {
+		"_postman_id": "953a14f0-9de5-4dde-bd8d-93746133ac67",
+		"name": "Attendance System - Sprint 1",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "44432025",
+		"_collection_link": "https://alialsaegh.postman.co/workspace/952109ac-e767-4dff-8009-ac4639951afc/collection/44432025-953a14f0-9de5-4dde-bd8d-93746133ac67?action=share&source=collection_link&creator=44432025"
+	},
+	"item": [
+		{
+			"name": "health check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/health",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create student",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": " {\r\n  \"student_number\": \"S1234567\",\r\n  \"first_name\": \"Ali\",\r\n  \"last_name\": \"Ahmed\",\r\n  \"email\": \"ali@example.com\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/students",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"students"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "list student",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/api/students",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"students"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Modules",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": " {\r\n  \"module_id\": 201,\r\n  \"module_code\": \"NW102\",\r\n  \"module_name\": \"Networking\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/modules",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"modules"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "list modules",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/api/modules",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"modules"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create enrolment",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"student_id\": 1,\r\n  \"module_id\": 1\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/enrolments",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"enrolments"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "list enrolments",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/api/enrolments",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"enrolments"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "card issue",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"student_id\": 1,\r\n  \"card_uid\": \"893746283746\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/cards/assign",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"cards",
+						"assign"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "create session",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"module_id\": 1,\r\n  \"start_time\": \"2026-02-26T10:00:00\",\r\n  \"location\": \"Lab 2\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/sessions",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"sessions"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "start session",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/api/sessions/1/start",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"sessions",
+						"1",
+						"start"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "scan simulation",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"card_uid\": \"893746283746\",\r\n  \"device_id\": \"web-sim-01\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/attendance/scan",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"attendance",
+						"scan"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "attendance list",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/sessions/1/attendance",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"sessions",
+						"1",
+						"attendance"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
