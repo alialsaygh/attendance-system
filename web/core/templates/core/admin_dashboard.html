@@ -1,0 +1,65 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<h5 class="fw-semibold mb-4">Admin dashboard</h5>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <div class="text-muted small">Students</div>
+            <div class="fs-3 fw-semibold">{{ students|length }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
+            <div class="text-muted small">Modules</div>
+            <div class="fs-3 fw-semibold">{{ modules|length }}</div>
+        </div>
+    </div>
+</div>
+
+<h6 class="fw-semibold mb-2">Students</h6>
+<div class="card mb-4">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr><th>ID</th><th>Number</th><th>Name</th><th>Email</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                {% for s in students %}
+                <tr>
+                    <td>{{ s.student_id }}</td>
+                    <td>{{ s.student_number }}</td>
+                    <td>{{ s.first_name }} {{ s.last_name }}</td>
+                    <td>{{ s.email }}</td>
+                    <td><span class="badge bg-success">{{ s.status }}</span></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted">No students yet</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<h6 class="fw-semibold mb-2">Modules</h6>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr><th>ID</th><th>Code</th><th>Name</th></tr>
+            </thead>
+            <tbody>
+                {% for m in modules %}
+                <tr>
+                    <td>{{ m.module_id }}</td>
+                    <td>{{ m.module_code }}</td>
+                    <td>{{ m.module_name }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-center text-muted">No modules yet</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<h5 class="fw-semibold mb-4">Tutor dashboard</h5>
+
+{% if active_session.session_id %}
+<div class="alert alert-success">
+    Active session — <strong>{{ active_session.module_code }}</strong>
+    (started {{ active_session.start_time }})
+</div>
+{% else %}
+<div class="alert alert-warning">No active session running.</div>
+{% endif %}
+
+<div class="card p-3">
+    <p class="text-muted small mb-2">Select a module and start a session</p>
+    <form method="post" action="/tutor/session/start/">
+        {% csrf_token %}
+        <div class="d-flex gap-2">
+            <select name="module_id" class="form-select">
+                {% for m in modules %}
+                <option value="{{ m.module_id }}">{{ m.module_code }} – {{ m.module_name }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-success px-4">Start session</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
