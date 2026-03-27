@@ -8,7 +8,27 @@ from django.conf import settings
 from .models import User
 
 API = settings.FLASK_API_URL
+from .models import User
 
+from .models import User
+
+@login_required
+@role_required('admin')
+def admin_dashboard(request):
+    try:
+        modules = requests.get(f"{API}/modules").json().get('modules', [])
+    except Exception:
+        modules = []
+
+    students = User.objects.filter(role='student')
+    tutors = User.objects.filter(role='tutor')
+
+    return render(request, 'core/admin_dashboard.html', {
+        'students': students,
+        'tutors': tutors,
+        'modules': modules,
+    })
+    
 # Login / Logout
 def login_view(request):
     if request.user.is_authenticated:
@@ -51,7 +71,8 @@ def dashboard(request):
 @role_required('admin')
 def admin_dashboard(request):
     try:
-        students = requests.get(f"{API}/students").json().get('students', [])
+        #students = requests.get(f"{API}/students").json().get('students', [])
+        students = User.objects.filter(role='student')
         modules = requests.get(f"{API}/modules").json().get('modules', [])
     except Exception:
         students, modules = [], []
@@ -192,21 +213,12 @@ def create_module(request):
     return redirect('admin_dashboard')
 
 # Student deletion for admin dashboard
-
 @login_required
 @role_required('admin')
 def delete_student(request, user_id):
     if request.method == 'POST':
         try:
             user = User.objects.get(id=user_id, role='student')
-
-            # remove from Flask if student_number exists
-            if user.student_number:
-                try:
-                    requests.delete(f"{API}/students/{user.student_number}")
-                except Exception:
-                    pass
-
             user.delete()
             messages.success(request, 'Student removed successfully.')
         except User.DoesNotExist:

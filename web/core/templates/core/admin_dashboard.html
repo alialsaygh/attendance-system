@@ -60,21 +60,31 @@
             <tbody>
                 {% for s in students %}
                 <tr>
-                    <td>{{ s.student_id }}</td>
-                    <td>{{ s.student_number }}</td>
-                    <td>{{ s.first_name }} {{ s.last_name }}</td>
-                    <td>{{ s.email }}</td>
-                    <td><span class="badge bg-success">{{ s.status }}</span></td>
-                    <td>
-                        <form method="post" action="{% url 'delete_student' s.user_id %}">
-                            {% csrf_token %}
-                            <button class="btn btn-sm btn-danger">Remove</button>
-                        </form>
-                    </td>
+                <td>{{ s.id }}</td>
+                <td>{{ s.student_number }}</td>
+                <td>{{ s.first_name }} {{ s.last_name }}</td>
+                <td>{{ s.email }}</td>
+                <td>
+                    {% if s.is_active %}
+                    <span class="badge bg-success">Active</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if s.id %}
+                    <form method="post" action="{% url 'delete_student' s.id %}">
+                        {% csrf_token %}
+                        <button class="btn btn-sm btn-danger">Remove</button>
+                    </form>
+                    {% else %}
+                    <span class="text-muted">No ID</span>
+                    {% endif %}
+                </td>
                 </tr>
-                {% empty %}
-                <tr><td colspan="5" class="text-center text-muted">No students yet</td></tr>
-                {% endfor %}
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted">No students yet</td></tr>
+                    {% endfor %}
             </tbody>
         </table>
     </div>
