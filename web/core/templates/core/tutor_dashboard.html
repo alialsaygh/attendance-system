@@ -3,26 +3,43 @@
 <h5 class="fw-semibold mb-4">Tutor dashboard</h5>
 
 {% if active_session.session_id %}
-<div class="alert alert-success">
-    Active session — <strong>{{ active_session.module_code }}</strong>
-    (started {{ active_session.start_time }})
+<div class="alert alert-success d-flex justify-content-between align-items-center">
+<div>
+    <strong>Session active:</strong> {{ active_session.module_code }}
+    &mdash; started {{ active_session.start_time }}
+</div>
+<form method="post" action="{% url 'session_close' %}">
+    {% csrf_token %}
+    <input type="hidden" name="session_id" value="{{ active_session.session_id }}">
+    <button class="btn btn-danger btn-sm">Close session</button>
+</form>
+</div>
+<div class="mb-3 d-flex gap-2">
+<a href="{% url 'scan_station' %}" class="btn btn-outline-primary">
+    Open scan station
+</a>
+<a href="{% url 'live_attendance' %}" class="btn btn-outline-success">
+    View live attendance
+</a>
 </div>
 {% else %}
-<div class="alert alert-warning">No active session running.</div>
+<div class="alert alert-warning">No active session. Start one below.</div>
 {% endif %}
 
 <div class="card p-3">
-    <p class="text-muted small mb-2">Select a module and start a session</p>
-    <form method="post" action="/tutor/session/start/">
-        {% csrf_token %}
-        <div class="d-flex gap-2">
-            <select name="module_id" class="form-select">
-                {% for m in modules %}
-                <option value="{{ m.module_id }}">{{ m.module_code }} – {{ m.module_name }}</option>
-                {% endfor %}
-            </select>
-            <button class="btn btn-success px-4">Start session</button>
-        </div>
-    </form>
+<h6 class="fw-semibold mb-3">Start a new session</h6>
+<form method="post" action="{% url 'session_start' %}">
+    {% csrf_token %}
+    <div class="d-flex gap-2">
+    <select name="module_id" class="form-select">
+        {% for m in modules %}
+        <option value="{{ m.module_id }}">
+        {{ m.module_code }} — {{ m.module_name }}
+        </option>
+        {% endfor %}
+    </select>
+    <button class="btn btn-success px-4">Start</button>
+    </div>
+</form>
 </div>
 {% endblock %}

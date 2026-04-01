@@ -1,0 +1,92 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<h5 class="fw-semibold mb-4">Scan station</h5>
+
+{% if active_session.session_id %}
+<div class="alert alert-success mb-4">
+<strong>Session active:</strong> {{ active_session.module_code }}
+&mdash; Session ID: {{ active_session.session_id }}
+</div>
+{% else %}
+<div class="alert alert-danger mb-4">
+No active session. Go back and start a session first.
+</div>
+{% endif %}
+
+<div class="row g-4 mb-4">
+<div class="col-md-4">
+    <div class="card p-4 text-center">
+    <div class="text-muted small mb-1">Present</div>
+    <div class="fs-3 fw-semibold text-success" id="present-count">
+        {{ present|length }}
+    </div>
+    </div>
+</div>
+<div class="col-md-4">
+    <div class="card p-4 text-center">
+    <div class="text-muted small mb-1">Scan status</div>
+    <div class="fs-5 fw-semibold text-secondary">Waiting for scan...</div>
+    </div>
+</div>
+<!-- Facial recognition placeholder — Sprint 3 -->
+<div class="col-md-4">
+    <div class="card p-4 text-center"
+        style="border: 2px dashed #dee2e6;">
+    <div class="text-muted small mb-1">Face recognition</div>
+    <div class="text-muted small">Placeholder — Sprint 3</div>
+    <span class="badge bg-secondary mt-2">Not active</span>
+    </div>
+</div>
+</div>
+
+<h6 class="fw-semibold mb-2">Present students</h6>
+<div class="card">
+<table class="table table-hover mb-0">
+    <thead class="table-light">
+    <tr><th>#</th><th>Student number</th><th>Name</th><th>Time</th></tr>
+    </thead>
+    <tbody id="present-body">
+    {% for p in present %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ p.student_number }}</td>
+        <td>{{ p.name }}</td>
+        <td>{{ p.tap_time }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="4" class="text-center text-muted py-3">
+        No students scanned yet
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<script>
+function refreshData() {
+fetch('/tutor/attendance/live-data/')
+    .then(r => r.json())
+    .then(data => {
+    const present = data.present || [];
+    document.getElementById('present-count').textContent = present.length;
+    const tbody = document.getElementById('present-body');
+    if (present.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No students scanned yet</td></tr>';
+        return;
+    }
+    tbody.innerHTML = present.map((p, i) => `
+        <tr>
+        <td>${i + 1}</td>
+        <td>${p.student_number}</td>
+        <td>${p.name}</td>
+        <td>${p.tap_time}</td>
+        </tr>
+    `).join('');
+    })
+    .catch(() => {});
+}
+setInterval(refreshData, 3000);
+</script>
+{% endblock %}

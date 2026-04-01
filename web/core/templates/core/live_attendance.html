@@ -1,0 +1,83 @@
+{% extends 'core/base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+<h5 class="fw-semibold mb-0">Live attendance</h5>
+<span class="badge bg-success">Auto-refreshing every 3s</span>
+</div>
+
+{% if active_session.session_id %}
+<div class="alert alert-success mb-4">
+<strong>{{ active_session.module_code }}</strong>
+&mdash; Session {{ active_session.session_id }}
+&mdash; Started {{ active_session.start_time }}
+</div>
+{% else %}
+<div class="alert alert-warning">No active session running.</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+<div class="col-md-3">
+    <div class="card text-center p-3">
+    <div class="text-muted small">Present</div>
+    <div class="fs-3 fw-semibold text-success" id="count-present">
+        {{ present|length }}
+    </div>
+    </div>
+</div>
+</div>
+
+<div class="card">
+<table class="table table-hover mb-0">
+    <thead class="table-light">
+    <tr>
+        <th>#</th><th>Student number</th>
+        <th>Name</th><th>Scan time</th><th>Status</th>
+    </tr>
+    </thead>
+    <tbody id="attendance-body">
+    {% for p in present %}
+    <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ p.student_number }}</td>
+        <td>{{ p.name }}</td>
+        <td>{{ p.tap_time }}</td>
+        <td><span class="badge bg-success">Present</span></td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="5" class="text-center text-muted py-3">
+        No students scanned yet
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<script>
+function refresh() {
+fetch('/tutor/attendance/live-data/')
+    .then(r => r.json())
+    .then(data => {
+    const present = data.present || [];
+    document.getElementById('count-present').textContent = present.length;
+    const tbody = document.getElementById('attendance-body');
+    if (present.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No students scanned yet</td></tr>';
+        return;
+    }
+    tbody.innerHTML = present.map((p, i) => `
+        <tr>
+        <td>${i + 1}</td>
+        <td>${p.student_number}</td>
+        <td>${p.name}</td>
+        <td>${p.tap_time}</td>
+        <td><span class="badge bg-success">Present</span></td>
+        </tr>
+    `).join('');
+    })
+    .catch(() => {});
+}
+setInterval(refresh, 3000);
+</script>
+{% endblock %}

@@ -11,9 +11,14 @@
     </div>
     <div class="col-md-3">
         <div class="card text-center p-3">
+            <div class="text-muted small">Tutors</div>
+            <div class="fs-3 fw-semibold">{{ tutors|length }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center p-3">
             <div class="text-muted small">Modules</div>
             <div class="fs-3 fw-semibold">{{ modules|length }}</div>
-        </div>
     </div>
 </div>
 
@@ -88,6 +93,77 @@
             </tbody>
         </table>
     </div>
+</div>
+
+<!-- ── ASSIGN RFID CARD ── -->
+<h6 class="fw-semibold mb-2">Assign RFID card to student</h6>
+<div class="card p-3 mb-4">
+<form method="post" action="{% url 'assign_card' %}">
+    {% csrf_token %}
+    <div class="row g-2 align-items-end">
+    <div class="col-md-4">
+        <label class="form-label text-muted small mb-1">Select student</label>
+        <select name="student_id" class="form-select">
+        {% for s in students %}
+        <option value="{{ s.student_number }}">
+            {{ s.first_name }} {{ s.last_name }}
+            ({{ s.student_number }})
+        </option>
+        {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-5">
+        <label class="form-label text-muted small mb-1">Card UID</label>
+        <input type="text" name="card_uid" class="form-control"
+            placeholder="e.g. TEST-001 or Pi RFID UID" required>
+    </div>
+    <div class="col-md-3">
+        <button class="btn btn-secondary w-100">Assign card</button>
+    </div>
+    </div>
+    <div class="mt-2">
+    <small class="text-muted">
+        To get the card UID: run the Pi RFID script once and tap
+        the card — it will print the UID. For testing use any
+        string e.g. TEST-001.
+    </small>
+    </div>
+</form>
+</div>
+
+
+<!-- ── ENROL STUDENT IN MODULE ── -->
+<h6 class="fw-semibold mb-2">Enrol student in module</h6>
+<div class="card p-3 mb-4">
+<form method="post" action="{% url 'enrol_student' %}">
+    {% csrf_token %}
+    <div class="row g-2 align-items-end">
+    <div class="col-md-4">
+        <label class="form-label text-muted small mb-1">Student</label>
+        <select name="student_number" class="form-select">
+        {% for s in students %}
+        <option value="{{ s.student_number }}">
+            {{ s.first_name }} {{ s.last_name }}
+            ({{ s.student_number }})
+        </option>
+        {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label text-muted small mb-1">Module</label>
+        <select name="module_id" class="form-select">
+        {% for m in modules %}
+        <option value="{{ m.module_id }}">
+            {{ m.module_code }} — {{ m.module_name }}
+        </option>
+        {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-4">
+        <button class="btn btn-primary w-100">Enrol student</button>
+    </div>
+    </div>
+</form>
 </div>
 
 <h6 class="fw-semibold mb-2">Add tutor</h6>

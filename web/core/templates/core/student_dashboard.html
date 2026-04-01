@@ -1,7 +1,36 @@
 {% extends 'core/base.html' %}
 {% block content %}
 <h5 class="fw-semibold mb-4">My attendance</h5>
-<div class="alert alert-info">
-    Attendance records will appear here once sessions have been recorded.
+
+{% if not student_found %}
+<div class="alert alert-warning">
+Your student profile was not found. Ask your admin to check
+your student number is set correctly on your account.
 </div>
+{% elif records %}
+<div class="card">
+<table class="table table-hover mb-0">
+    <thead class="table-light">
+    <tr>
+        <th>Module code</th>
+        <th>Module name</th>
+        <th>Enrolled since</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for r in records %}
+    <tr>
+        <td>{{ r.module_code }}</td>
+        <td>{{ r.module_name }}</td>
+        <td>{{ r.enrolled_at }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="alert alert-info">
+You are not enrolled in any modules yet.
+</div>
+{% endif %}
 {% endblock %}
