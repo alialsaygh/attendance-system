@@ -17,7 +17,6 @@ urlpatterns = [
     path('dashboard/admin/tutors/<int:user_id>/delete/',views.delete_tutor, name='delete_tutor'),
     path('dashboard/admin/tutors/assign-module/',views.assign_module_to_tutor, name='assign_module_to_tutor'),
     path('dashboard/admin/cards/assign/', views.assign_card, name='assign_card'),
-    path('dashboard/admin/cards/assign/',    views.assign_card,   name='assign_card'),
     path('dashboard/admin/students/enrol/',  views.enrol_student, name='enrol_student'),
 
     # Tutor 
@@ -27,6 +26,7 @@ urlpatterns = [
     path('tutor/scan-station/',views.scan_station, name='scan_station'),
     path('tutor/live-attendance/', views.live_attendance, name='live_attendance'),
     path('tutor/attendance/live-data/',views.live_attendance_data, name='live_attendance_data'),
+    path('tutor/module/<int:module_id>/students/',views.tutor_module_students, name='tutor_module_students'),
     
 
     # Student

@@ -3,35 +3,41 @@
 <h5 class="fw-semibold mb-4">Scan station</h5>
 
 {% if active_session.session_id %}
-<div class="alert alert-success mb-4">
+<div class="alert alert-success mb-3">
 <strong>Session active:</strong> {{ active_session.module_code }}
 &mdash; Session ID: {{ active_session.session_id }}
 </div>
 {% else %}
-<div class="alert alert-danger mb-4">
+<div class="alert alert-danger mb-3">
 No active session. Go back and start a session first.
 </div>
 {% endif %}
 
-<div class="row g-4 mb-4">
-<div class="col-md-4">
-    <div class="card p-4 text-center">
-    <div class="text-muted small mb-1">Present</div>
-    <div class="fs-3 fw-semibold text-success" id="present-count">
-        {{ present|length }}
-    </div>
-    </div>
-</div>
-<div class="col-md-4">
-    <div class="card p-4 text-center">
-    <div class="text-muted small mb-1">Scan status</div>
-    <div class="fs-5 fw-semibold text-secondary">Waiting for scan...</div>
+<!-- Last scan result  -->
+<div class="row g-3 mb-4">
+<div class="col-md-5">
+    <div class="card p-4 text-center" id="scan-result-card">
+    <div class="text-muted small mb-1">Last scan result</div>
+    <div class="fs-4 fw-semibold" id="scan-status">Waiting for scan...</div>
+    <div class="mt-1" id="scan-name" style="font-size:14px;color:var(--bs-secondary-color);"></div>
+    <div class="mt-1" id="scan-time" style="font-size:12px;color:var(--bs-secondary-color);"></div>
     </div>
 </div>
-<!-- Facial recognition placeholder — Sprint 3 -->
-<div class="col-md-4">
-    <div class="card p-4 text-center"
-        style="border: 2px dashed #dee2e6;">
+<div class="col-md-2">
+    <div class="card p-4 text-center">
+    <div class="text-muted small">Present</div>
+    <div class="fs-3 fw-semibold text-success" id="count-present">{{ present|length }}</div>
+    </div>
+</div>
+<div class="col-md-2">
+    <div class="card p-4 text-center">
+    <div class="text-muted small">Late</div>
+    <div class="fs-3 fw-semibold text-warning" id="count-late">{{ late|length }}</div>
+    </div>
+</div>
+<!-- Face recognition placeholder -->
+<div class="col-md-3">
+    <div class="card p-4 text-center" style="border: 2px dashed #dee2e6;">
     <div class="text-muted small mb-1">Face recognition</div>
     <div class="text-muted small">Placeholder — Sprint 3</div>
     <span class="badge bg-secondary mt-2">Not active</span>
@@ -39,23 +45,33 @@ No active session. Go back and start a session first.
 </div>
 </div>
 
-<h6 class="fw-semibold mb-2">Present students</h6>
+<!-- Scanned students table -->
+<h6 class="fw-semibold mb-2">Scanned students</h6>
 <div class="card">
 <table class="table table-hover mb-0">
     <thead class="table-light">
-    <tr><th>#</th><th>Student number</th><th>Name</th><th>Time</th></tr>
+    <tr><th>#</th><th>Student number</th><th>Name</th><th>Time</th><th>Status</th></tr>
     </thead>
-    <tbody id="present-body">
-    {% for p in present %}
+    <tbody id="scanned-body">
+    {% for p in all_scanned %}
     <tr>
         <td>{{ forloop.counter }}</td>
         <td>{{ p.student_number }}</td>
         <td>{{ p.name }}</td>
         <td>{{ p.tap_time }}</td>
+        <td>
+        {% if p.result == 'present' %}
+            <span class="badge bg-success">Present</span>
+        {% elif p.result == 'late' %}
+            <span class="badge bg-warning text-dark">Late</span>
+        {% else %}
+            <span class="badge bg-secondary">{{ p.result }}</span>
+        {% endif %}
+        </td>
     </tr>
     {% empty %}
-    <tr>
-        <td colspan="4" class="text-center text-muted py-3">
+    <tr id="empty-row">
+        <td colspan="5" class="text-center text-muted py-3">
         No students scanned yet
         </td>
     </tr>
@@ -65,28 +81,103 @@ No active session. Go back and start a session first.
 </div>
 
 <script>
-function refreshData() {
+// Track previous total to detect new scans
+let prevTotal = {{ all_scanned|length }};
+let lastEntry = null;
+
+function statusBadge(result) {
+if (result === 'present')
+    return '<span class="badge bg-success">Present</span>';
+if (result === 'late')
+    return '<span class="badge bg-warning text-dark">Late</span>';
+return '<span class="badge bg-secondary">' + result + '</span>';
+}
+
+function updateScanResult(entry) {
+const card   = document.getElementById('scan-result-card');
+const status = document.getElementById('scan-status');
+const name   = document.getElementById('scan-name');
+const time   = document.getElementById('scan-time');
+
+if (entry.result === 'present') {
+    card.style.borderColor   = '#198754';
+    card.style.background    = '#d1e7dd';
+    status.style.color       = '#0f5132';
+    status.textContent       = '✓ Present';
+} else if (entry.result === 'late') {
+    card.style.borderColor   = '#ffc107';
+    card.style.background    = '#fff3cd';
+    status.style.color       = '#664d03';
+    status.textContent       = '⚠ Late';
+} else {
+    card.style.borderColor   = '#dc3545';
+    card.style.background    = '#f8d7da';
+    status.style.color       = '#842029';
+    status.textContent       = '✗ ' + entry.result;
+}
+name.textContent = entry.name || '';
+time.textContent = entry.tap_time || '';
+}
+
+function resetScanCard() {
+const card = document.getElementById('scan-result-card');
+card.style.borderColor  = '';
+card.style.background   = '';
+document.getElementById('scan-status').style.color = '';
+document.getElementById('scan-status').textContent = 'Waiting for scan...';
+document.getElementById('scan-name').textContent   = '';
+document.getElementById('scan-time').textContent   = '';
+}
+
+function refresh() {
 fetch('/tutor/attendance/live-data/')
     .then(r => r.json())
     .then(data => {
-    const present = data.present || [];
-    document.getElementById('present-count').textContent = present.length;
-    const tbody = document.getElementById('present-body');
-    if (present.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No students scanned yet</td></tr>';
+    const present  = data.present || [];
+    const late     = data.late    || [];
+    const all      = [...present, ...late];
+    const newTotal = all.length;
+
+    document.getElementById('count-present').textContent = present.length;
+    document.getElementById('count-late').textContent    = late.length;
+
+      // New scan detected — show result on screen
+    if (newTotal > prevTotal) {
+        // Sort by tap_time descending to get latest
+        const sorted = all.slice().sort(
+        (a, b) => new Date(b.tap_time) - new Date(a.tap_time)
+        );
+        lastEntry = sorted[0];
+        updateScanResult(lastEntry);
+
+        // Reset after 4 seconds
+        setTimeout(resetScanCard, 4000);
+        prevTotal = newTotal;
+    }
+
+      // Update table
+    const tbody = document.getElementById('scanned-body');
+    if (all.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No students scanned yet</td></tr>';
         return;
     }
-    tbody.innerHTML = present.map((p, i) => `
+      // Sort by tap_time ascending for table
+    const sorted = all.slice().sort(
+        (a, b) => new Date(a.tap_time) - new Date(b.tap_time)
+    );
+    tbody.innerHTML = sorted.map((p, i) => `
         <tr>
         <td>${i + 1}</td>
         <td>${p.student_number}</td>
         <td>${p.name}</td>
         <td>${p.tap_time}</td>
+        <td>${statusBadge(p.result)}</td>
         </tr>
     `).join('');
     })
     .catch(() => {});
 }
-setInterval(refreshData, 3000);
+
+setInterval(refresh, 2000);
 </script>
 {% endblock %}

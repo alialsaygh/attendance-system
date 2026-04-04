@@ -15,69 +15,93 @@
 <div class="alert alert-warning">No active session running.</div>
 {% endif %}
 
+<!-- Summary counters -->
 <div class="row g-3 mb-4">
 <div class="col-md-3">
     <div class="card text-center p-3">
     <div class="text-muted small">Present</div>
-    <div class="fs-3 fw-semibold text-success" id="count-present">
-        {{ present|length }}
+    <div class="fs-3 fw-semibold text-success" id="count-present">0</div>
     </div>
+</div>
+<div class="col-md-3">
+    <div class="card text-center p-3">
+    <div class="text-muted small">Late</div>
+    <div class="fs-3 fw-semibold text-warning" id="count-late">0</div>
+    </div>
+</div>
+<div class="col-md-3">
+    <div class="card text-center p-3">
+    <div class="text-muted small">Total scanned</div>
+    <div class="fs-3 fw-semibold" id="count-total">0</div>
     </div>
 </div>
 </div>
 
+<!-- Attendance table -->
 <div class="card">
 <table class="table table-hover mb-0">
     <thead class="table-light">
     <tr>
-        <th>#</th><th>Student number</th>
-        <th>Name</th><th>Scan time</th><th>Status</th>
+        <th>#</th>
+        <th>Student number</th>
+        <th>Name</th>
+        <th>Scan time</th>
+        <th>Status</th>
     </tr>
     </thead>
     <tbody id="attendance-body">
-    {% for p in present %}
-    <tr>
-        <td>{{ forloop.counter }}</td>
-        <td>{{ p.student_number }}</td>
-        <td>{{ p.name }}</td>
-        <td>{{ p.tap_time }}</td>
-        <td><span class="badge bg-success">Present</span></td>
-    </tr>
-    {% empty %}
     <tr>
         <td colspan="5" class="text-center text-muted py-3">
-        No students scanned yet
+        Waiting for scans...
         </td>
     </tr>
-    {% endfor %}
     </tbody>
 </table>
 </div>
 
 <script>
+function statusBadge(result) {
+if (result === 'present')
+    return '<span class="badge bg-success">Present</span>';
+if (result === 'late')
+    return '<span class="badge bg-warning text-dark">Late</span>';
+if (result === 'absent')
+    return '<span class="badge bg-danger">Absent</span>';
+return '<span class="badge bg-secondary">' + result + '</span>';
+}
+
 function refresh() {
 fetch('/tutor/attendance/live-data/')
     .then(r => r.json())
     .then(data => {
     const present = data.present || [];
+    const late    = data.late    || [];
+    const total   = data.total   || 0;
+    const all     = [...present, ...late];
+
     document.getElementById('count-present').textContent = present.length;
+    document.getElementById('count-late').textContent    = late.length;
+    document.getElementById('count-total').textContent   = total;
+
     const tbody = document.getElementById('attendance-body');
-    if (present.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No students scanned yet</td></tr>';
+    if (all.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Waiting for scans...</td></tr>';
         return;
     }
-    tbody.innerHTML = present.map((p, i) => `
+    tbody.innerHTML = all.map((p, i) => `
         <tr>
         <td>${i + 1}</td>
         <td>${p.student_number}</td>
         <td>${p.name}</td>
         <td>${p.tap_time}</td>
-        <td><span class="badge bg-success">Present</span></td>
+        <td>${statusBadge(p.result)}</td>
         </tr>
     `).join('');
     })
     .catch(() => {});
 }
+
+refresh();
 setInterval(refresh, 3000);
 </script>
 {% endblock %}

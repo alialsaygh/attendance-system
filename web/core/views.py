@@ -46,13 +46,13 @@ def dashboard(request):
         return redirect('student_dashboard')
 
 
-# ADMIN DASHBOARD 
+# ADMIN DASHBOARD
 
 @login_required
 @role_required('admin')
 def admin_dashboard(request):
     try:
-        modules = requests.get(f"{API}/modules").json().get('modules', [])
+        modules = requests.get(f"{API}/modules", timeout=5).json().get('modules', [])
     except Exception:
         modules = []
     students = User.objects.filter(role='student')
@@ -64,7 +64,7 @@ def admin_dashboard(request):
     })
 
 
-# ADMIN: CREATE STUDENT
+# ADMIN: CREATE STUDENT 
 
 @login_required
 @role_required('admin')
@@ -86,27 +86,21 @@ def create_student(request):
             return redirect('admin_dashboard')
 
         try:
-            # Create student record in Flask database
             r = requests.post(f"{API}/students", json={
                 'student_number': student_number,
                 'first_name':     first_name,
                 'last_name':      last_name,
                 'email':          email,
                 'status':         'active',
-            })
+            }, timeout=5)
             if r.status_code not in [200, 201]:
                 messages.error(request, r.json().get('message', 'Flask API error.'))
                 return redirect('admin_dashboard')
 
-            # Create Django login account
             User.objects.create_user(
-                username=username,
-                password=password,
-                role='student',
-                student_number=student_number,
-                email=email,
-                first_name=first_name,
-                last_name=last_name,
+                username=username, password=password,
+                role='student', student_number=student_number,
+                email=email, first_name=first_name, last_name=last_name,
             )
             messages.success(request, f'Student {first_name} {last_name} created.')
         except Exception as e:
@@ -114,7 +108,7 @@ def create_student(request):
     return redirect('admin_dashboard')
 
 
-# ADMIN: CREATE TUTOR 
+# ADMIN: CREATE TUTOR
 
 @login_required
 @role_required('admin')
@@ -130,24 +124,17 @@ def create_tutor(request):
         if not all([username, password, first_name, last_name, email, staff_number]):
             messages.error(request, 'All tutor fields are required.')
             return redirect('admin_dashboard')
-
         if User.objects.filter(username=username).exists():
             messages.error(request, 'Username already exists.')
             return redirect('admin_dashboard')
-
         if User.objects.filter(email=email).exists():
             messages.error(request, 'Email already exists.')
             return redirect('admin_dashboard')
-
         try:
             User.objects.create_user(
-                username=username,
-                password=password,
-                first_name=first_name,
-                last_name=last_name,
-                email=email,
-                role='tutor',
-                staff_number=staff_number,
+                username=username, password=password,
+                first_name=first_name, last_name=last_name,
+                email=email, role='tutor', staff_number=staff_number,
             )
             messages.success(request, f'Tutor {first_name} {last_name} created.')
         except Exception as e:
@@ -170,101 +157,38 @@ def create_module(request):
             r = requests.post(f"{API}/modules", json={
                 'module_code': module_code,
                 'module_name': module_name,
-            })
+            }, timeout=5)
             if r.status_code in [200, 201]:
                 messages.success(request, f'Module {module_code} created.')
             else:
-                messages.error(request, r.json().get('message', 'Failed to create module.'))
+                messages.error(request, r.json().get('message', 'Failed.'))
         except Exception as e:
             messages.error(request, f'Flask API error: {e}')
     return redirect('admin_dashboard')
 
-# ADMIN: ASSIGN CARD 
-@login_required
-@role_required('admin')
-def assign_card(request):
-    if request.method == 'POST':
-        student_number = request.POST.get('student_id', '').strip()
-        card_uid       = request.POST.get('card_uid', '').strip()
-        try:
-            # Look up the student_id from Flask using student_number
-            all_students = requests.get(f"{API}/students").json().get('students', [])
-            student = next(
-                (s for s in all_students
-                if s['student_number'] == student_number),
-                None
-            )
-            if not student:
-                messages.error(request, 'Student not found in Flask database.')
-                return redirect('admin_dashboard')
 
-            r = requests.post(f"{API}/cards/assign", json={
-                'student_id': student['student_id'],
-                'card_uid':   card_uid,
-            })
-            if r.status_code == 200:
-                messages.success(request, f'Card {card_uid} assigned to {student_number}.')
-            else:
-                messages.error(request, r.json().get('message', 'Could not assign card.'))
-        except Exception as e:
-            messages.error(request, f'Error: {e}')
-    return redirect('admin_dashboard')
-
-# ── ADMIN: ENROL STUDENT IN MODULE (US6) ─────────────────────────
-@login_required
-@role_required('admin')
-def enrol_student(request):
-    if request.method == 'POST':
-        student_number = request.POST.get('student_number', '').strip()
-        module_id      = request.POST.get('module_id', '').strip()
-        try:
-            all_students = requests.get(f"{API}/students").json().get('students', [])
-            student = next(
-                (s for s in all_students
-                if s['student_number'] == student_number),
-                None
-            )
-            if not student:
-                messages.error(request, 'Student not found in Flask database.')
-                return redirect('admin_dashboard')
-
-            r = requests.post(f"{API}/enrolments", json={
-                'student_id': student['student_id'],
-                'module_id':  int(module_id),
-            })
-            if r.status_code == 201:
-                messages.success(request, f'{student_number} enrolled successfully.')
-            else:
-                messages.error(request, r.json().get('message', 'Could not enrol student.'))
-        except Exception as e:
-            messages.error(request, f'Error: {e}')
-    return redirect('admin_dashboard')
-
-
-# ADMIN: DELETE STUDENT 
+# ADMIN: DELETE STUDENT
 
 @login_required
 @role_required('admin')
 def delete_student(request, user_id):
     if request.method == 'POST':
         try:
-            user = User.objects.get(id=user_id, role='student')
-            user.delete()
+            User.objects.get(id=user_id, role='student').delete()
             messages.success(request, 'Student removed.')
         except User.DoesNotExist:
             messages.error(request, 'Student not found.')
     return redirect('admin_dashboard')
 
 
-# ADMIN: DELETE TUTOR 
+# ADMIN: DELETE TUTOR
 
 @login_required
 @role_required('admin')
 def delete_tutor(request, user_id):
     if request.method == 'POST':
         try:
-            user = User.objects.get(id=user_id, role='tutor')
-            user.delete()
+            User.objects.get(id=user_id, role='tutor').delete()
             messages.success(request, 'Tutor removed.')
         except User.DoesNotExist:
             messages.error(request, 'Tutor not found.')
@@ -284,13 +208,69 @@ def assign_module_to_tutor(request):
             r = requests.post(f"{API}/tutor-modules", json={
                 'staff_number': tutor.staff_number,
                 'module_id':    module_id,
-            })
+            }, timeout=5)
             if r.status_code in [200, 201]:
-                messages.success(request, 'Module assigned to tutor.')
+                messages.success(request, 'Module assigned.')
             else:
                 messages.error(request, 'Failed to assign module.')
-        except User.DoesNotExist:
-            messages.error(request, 'Tutor not found.')
+        except Exception as e:
+            messages.error(request, f'Error: {e}')
+    return redirect('admin_dashboard')
+
+
+# ADMIN: ASSIGN CARD TO STUDENT
+
+@login_required
+@role_required('admin')
+def assign_card(request):
+    if request.method == 'POST':
+        student_number = request.POST.get('student_id', '').strip()
+        card_uid       = request.POST.get('card_uid', '').strip()
+        try:
+            all_students = requests.get(f"{API}/students", timeout=5).json().get('students', [])
+            student = next(
+                (s for s in all_students if s['student_number'] == student_number), None
+            )
+            if not student:
+                messages.error(request, 'Student not found in Flask database.')
+                return redirect('admin_dashboard')
+            r = requests.post(f"{API}/cards/assign", json={
+                'student_id': student['student_id'],
+                'card_uid':   card_uid,
+            }, timeout=5)
+            if r.status_code == 200:
+                messages.success(request, f'Card {card_uid} assigned to {student_number}.')
+            else:
+                messages.error(request, r.json().get('message', 'Could not assign card.'))
+        except Exception as e:
+            messages.error(request, f'Error: {e}')
+    return redirect('admin_dashboard')
+
+
+# ADMIN: ENROL STUDENT IN MODULE
+
+@login_required
+@role_required('admin')
+def enrol_student(request):
+    if request.method == 'POST':
+        student_number = request.POST.get('student_number', '').strip()
+        module_id      = request.POST.get('module_id', '').strip()
+        try:
+            all_students = requests.get(f"{API}/students", timeout=5).json().get('students', [])
+            student = next(
+                (s for s in all_students if s['student_number'] == student_number), None
+            )
+            if not student:
+                messages.error(request, 'Student not found in Flask database.')
+                return redirect('admin_dashboard')
+            r = requests.post(f"{API}/enrolments", json={
+                'student_id': student['student_id'],
+                'module_id':  int(module_id),
+            }, timeout=5)
+            if r.status_code == 201:
+                messages.success(request, f'{student_number} enrolled successfully.')
+            else:
+                messages.error(request, r.json().get('message', 'Could not enrol.'))
         except Exception as e:
             messages.error(request, f'Error: {e}')
     return redirect('admin_dashboard')
@@ -301,11 +281,13 @@ def assign_module_to_tutor(request):
 @login_required
 @role_required('tutor')
 def tutor_dashboard(request):
+    active  = {}
+    modules = []
     try:
-        active  = requests.get(f"{API}/sessions/active").json()
-        modules = requests.get(f"{API}/modules").json().get('modules', [])
-    except Exception:
-        active, modules = {}, []
+        active  = requests.get(f"{API}/sessions/active", timeout=5).json()
+        modules = requests.get(f"{API}/modules", timeout=5).json().get('modules', [])
+    except Exception as e:
+        messages.warning(request, f'Could not reach Flask API: {e}')
     return render(request, 'core/tutor_dashboard.html', {
         'active_session': active,
         'modules':        modules,
@@ -320,23 +302,21 @@ def session_start(request):
     if request.method == 'POST':
         module_id = request.POST.get('module_id')
         try:
-            # Step 1 — create session record in Flask
             create_resp = requests.post(f"{API}/sessions", json={
                 'module_id':  int(module_id),
                 'start_time': datetime.utcnow().isoformat(),
-            })
+            }, timeout=5)
             if create_resp.status_code != 201:
                 messages.error(request, 'Could not create session.')
                 return redirect('tutor_dashboard')
-
             session_id = create_resp.json().get('session_id')
-
-            # Step 2 — activate it
-            start_resp = requests.post(f"{API}/sessions/{session_id}/start")
+            start_resp = requests.post(
+                f"{API}/sessions/{session_id}/start", timeout=5
+            )
             if start_resp.status_code == 200:
-                messages.success(request, 'Session started successfully.')
+                messages.success(request, 'Session started.')
             else:
-                messages.error(request, start_resp.json().get('message', 'Could not activate session.'))
+                messages.error(request, start_resp.json().get('message', 'Could not start.'))
         except Exception as e:
             messages.error(request, f'Error: {e}')
     return redirect('tutor_dashboard')
@@ -350,58 +330,122 @@ def session_close(request):
     if request.method == 'POST':
         session_id = request.POST.get('session_id')
         try:
-            resp = requests.post(f"{API}/sessions/{session_id}/close")
+            resp = requests.post(
+                f"{API}/sessions/{session_id}/close", timeout=5
+            )
             if resp.status_code == 200:
                 messages.success(request, 'Session closed.')
             else:
-                messages.error(request, resp.json().get('message', 'Could not close session.'))
+                messages.error(request, resp.json().get('message', 'Could not close.'))
         except Exception as e:
             messages.error(request, f'Error: {e}')
     return redirect('tutor_dashboard')
 
 
-# TUTOR: SCAN STATION
+# TUTOR: SCAN STATION 
 
 @login_required
 @role_required('tutor')
 def scan_station(request):
+    active  = {}
+    present = []
+    late    = []
     try:
-        active  = requests.get(f"{API}/sessions/active").json()
-        present = requests.get(f"{API}/attendance/active").json().get('present', [])
-    except Exception:
-        active, present = {}, []
+        active   = requests.get(f"{API}/sessions/active", timeout=5).json()
+        att_data = requests.get(f"{API}/attendance/active", timeout=5).json()
+        present  = att_data.get('present', [])
+        late     = att_data.get('late', [])
+    except Exception as e:
+        messages.warning(request, f'Could not reach Flask API: {e}')
     return render(request, 'core/scan_station.html', {
         'active_session': active,
         'present':        present,
+        'late':           late,
+        'all_scanned':    present + late,
     })
 
 
-# TUTOR: LIVE ATTENDANCE PAGE
+# TUTOR: LIVE ATTENDANCE PAGE 
 
 @login_required
 @role_required('tutor')
 def live_attendance(request):
+    active  = {}
+    present = []
+    late    = []
     try:
-        active  = requests.get(f"{API}/sessions/active").json()
-        present = requests.get(f"{API}/attendance/active").json().get('present', [])
+        active   = requests.get(f"{API}/sessions/active", timeout=5).json()
+        att_data = requests.get(f"{API}/attendance/active", timeout=5).json()
+        present  = att_data.get('present', [])
+        late     = att_data.get('late', [])
     except Exception:
-        active, present = {}, []
+        pass
     return render(request, 'core/live_attendance.html', {
         'active_session': active,
         'present':        present,
+        'late':           late,
     })
 
 
-# TUTOR: LIVE DATA JSON (called by JS every 3s)
+# TUTOR: LIVE DATA JSON 
 
 @login_required
 @role_required('tutor')
 def live_attendance_data(request):
     try:
-        data = requests.get(f"{API}/attendance/active").json()
+        att_data = requests.get(f"{API}/attendance/active", timeout=5).json()
+        present  = att_data.get('present', [])
+        late     = att_data.get('late', [])
+        return JsonResponse({
+            "present": present,
+            "late":    late,
+            "total":   len(present) + len(late),
+        })
     except Exception:
-        data = {'present': []}
-    return JsonResponse(data)
+        return JsonResponse({"present": [], "late": [], "total": 0})
+
+
+# TUTOR: MODULE STUDENTS
+
+@login_required
+@role_required('tutor')
+def tutor_module_students(request, module_id):
+    students = []
+    module   = {}
+    active   = {}
+    try:
+        enrolments   = requests.get(f"{API}/enrolments", timeout=5).json().get('enrolments', [])
+        all_students = requests.get(f"{API}/students", timeout=5).json().get('students', [])
+        module       = requests.get(f"{API}/modules/{module_id}", timeout=5).json()
+        active       = requests.get(f"{API}/sessions/active", timeout=5).json()
+
+        module_enrolments = [e for e in enrolments if e['module_id'] == module_id]
+        student_map       = {s['student_id']: s for s in all_students}
+
+        attendance_map = {}
+        if active.get('session_id'):
+            records = requests.get(
+                f"{API}/sessions/{active['session_id']}/attendance", timeout=5
+            ).json().get('records', [])
+            attendance_map = {r['student_id']: r['result'] for r in records}
+
+        for e in module_enrolments:
+            s = student_map.get(e['student_id'])
+            if s:
+                students.append({
+                    'student_id':     s['student_id'],
+                    'student_number': s['student_number'],
+                    'name':           f"{s['first_name']} {s['last_name']}",
+                    'status':         attendance_map.get(s['student_id'], 'not_scanned'),
+                })
+    except Exception as e:
+        messages.warning(request, f'Could not load data: {e}')
+
+    return render(request, 'core/tutor_module_students.html', {
+        'students':       students,
+        'module':         module,
+        'active_session': active,
+    })
 
 
 # STUDENT DASHBOARD 
@@ -412,7 +456,7 @@ def student_dashboard(request):
     records       = []
     student_found = False
     try:
-        all_students = requests.get(f"{API}/students").json().get('students', [])
+        all_students = requests.get(f"{API}/students", timeout=5).json().get('students', [])
         my_student   = next(
             (s for s in all_students
             if s['student_number'] == request.user.student_number),
@@ -421,10 +465,10 @@ def student_dashboard(request):
         if my_student:
             student_found = True
             student_id    = my_student['student_id']
-            enrolments    = requests.get(f"{API}/enrolments").json().get('enrolments', [])
+            enrolments    = requests.get(f"{API}/enrolments", timeout=5).json().get('enrolments', [])
             all_modules   = {
                 m['module_id']: m
-                for m in requests.get(f"{API}/modules").json().get('modules', [])
+                for m in requests.get(f"{API}/modules", timeout=5).json().get('modules', [])
             }
             for e in enrolments:
                 if e['student_id'] == student_id:
@@ -435,7 +479,7 @@ def student_dashboard(request):
                         'enrolled_at': e.get('enrolled_at', ''),
                     })
     except Exception as ex:
-        messages.warning(request, f'Could not load attendance: {ex}')
+        messages.warning(request, f'Could not load data: {ex}')
 
     return render(request, 'core/student_dashboard.html', {
         'records':       records,

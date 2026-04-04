@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-from models import db, Session, Module
+from models import db, Session, Module, Enrolment, AttendanceRecord
 
 sessions_bp = Blueprint("sessions_bp", __name__)
 
@@ -80,6 +80,36 @@ def close_session(session_id: int):
     if s.status != "active":
         return jsonify({"error": "not_active", "message": "Session is not active"}), 409
 
+    # Find all students enrolled in this module
+    enrolments = Enrolment.query.filter_by(module_id=s.module_id).all()
+
+    absent_count = 0
+    for enrolment in enrolments:
+        # Check if student has any attendance record for this session
+        existing = AttendanceRecord.query.filter_by(
+            session_id=session_id,
+            student_id=enrolment.student_id
+        ).first()
+
+        # If no record exists — mark as absent
+        if not existing:
+            absent_record = AttendanceRecord(
+                session_id=session_id,
+                student_id=enrolment.student_id,
+                tap_time=datetime.utcnow(),
+                device_id="system",
+                result="absent"
+            )
+            db.session.add(absent_record)
+            absent_count += 1
+
     s.status = "closed"
     db.session.commit()
-    return jsonify({"session_id": s.session_id, "status": s.status}), 200
+
+    return jsonify({
+        "session_id":   s.session_id,
+        "status":       s.status,
+        "absent_count": absent_count,
+        "message":      f"Session closed. {absent_count} student(s) marked absent."
+    }), 200
+    
