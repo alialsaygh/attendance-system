@@ -2,14 +2,10 @@ import time
 import requests
 from mfrc522 import SimpleMFRC522
 
-# ── CONFIGURATION ─────────────────────────────────────────────────
-# This is your laptop's IP address on the same WiFi network.
-# Find it by running: ipconfig (Windows) or ifconfig (Mac/Linux)
-# on your laptop and looking for the IPv4 address.
-# Example: 192.168.1.45
-FLASK_API = "http://192.168.1.XX:5000/api"   # <-- change XX to your IP
+
+FLASK_API = "http://192.168.56.100:5000/api" 
 DEVICE_ID = "pi-rfid-reader-01"
-# ──────────────────────────────────────────────────────────────────
+
 
 reader = SimpleMFRC522()
 
