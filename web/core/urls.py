@@ -18,6 +18,7 @@ urlpatterns = [
     path('dashboard/admin/tutors/assign-module/',views.assign_module_to_tutor, name='assign_module_to_tutor'),
     path('dashboard/admin/cards/assign/', views.assign_card, name='assign_card'),
     path('dashboard/admin/students/enrol/',  views.enrol_student, name='enrol_student'),
+    path('dashboard/admin/attendance/',views.admin_attendance, name='admin_attendance'),
 
     # Tutor 
     path('tutor/dashboard/',views.tutor_dashboard, name='tutor_dashboard'),

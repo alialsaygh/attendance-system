@@ -275,6 +275,98 @@ def enrol_student(request):
             messages.error(request, f'Error: {e}')
     return redirect('admin_dashboard')
 
+#  ADMIN VIEWS ALL ATTENDANCE RECORDS
+@login_required
+@role_required('admin')
+def admin_attendance(request):
+    records  = []
+    modules  = []
+    sessions = []
+
+    # Filters from GET params
+    filter_module  = request.GET.get('module', '')
+    filter_status  = request.GET.get('status', '')
+    filter_session = request.GET.get('session', '')
+    search_query   = request.GET.get('search', '').strip().lower()
+
+    try:
+        all_students = {
+            s['student_id']: s
+            for s in requests.get(f"{API}/students", timeout=5).json().get('students', [])
+        }
+        all_modules = {
+            m['module_id']: m
+            for m in requests.get(f"{API}/modules", timeout=5).json().get('modules', [])
+        }
+        modules  = list(all_modules.values())
+        sessions = requests.get(
+            f"{API}/sessions/all", timeout=5
+        ).json().get('sessions', [])
+
+        # Collect all attendance records across all sessions
+        for session in sessions:
+            session_id = session['session_id']
+            module     = all_modules.get(session['module_id'], {})
+
+            att = requests.get(
+                f"{API}/sessions/{session_id}/attendance", timeout=5
+            ).json()
+
+            for r in att.get('records', []):
+                student = all_students.get(r['student_id'], {})
+                records.append({
+                    'session_id':     session_id,
+                    'module_code':    module.get('module_code', ''),
+                    'module_name':    module.get('module_name', ''),
+                    'student_number': student.get('student_number', ''),
+                    'student_name':   f"{student.get('first_name','')} {student.get('last_name','')}".strip(),
+                    'date':           session.get('start_time', '')[:10],
+                    'time':           session.get('start_time', '')[11:16],
+                    'tap_time':       r.get('tap_time', '')[:16].replace('T', ' '),
+                    'status':         r.get('result', ''),
+                    'session_status': session.get('status', ''),
+                })
+
+        # Apply filters
+        if filter_module:
+            records = [r for r in records if r['module_code'] == filter_module]
+        if filter_status:
+            records = [r for r in records if r['status'] == filter_status]
+        if filter_session:
+            records = [r for r in records if str(r['session_id']) == filter_session]
+        if search_query:
+            records = [
+                r for r in records
+                if search_query in r['student_name'].lower()
+                or search_query in r['student_number'].lower()
+                or search_query in r['module_code'].lower()
+            ]
+
+        # Sort newest first
+        records.sort(key=lambda x: (x['date'], x['time']), reverse=True)
+
+    except Exception as ex:
+        messages.warning(request, f'Could not load records: {ex}')
+
+    # Summary counts
+    summary = {
+        'total':   len(records),
+        'present': len([r for r in records if r['status'] == 'present']),
+        'late':    len([r for r in records if r['status'] == 'late']),
+        'absent':  len([r for r in records if r['status'] == 'absent']),
+    }
+
+    return render(request, 'core/admin_attendance.html', {
+        'records':        records,
+        'modules':        modules,
+        'sessions':       sessions,
+        'summary':        summary,
+        'filter_module':  filter_module,
+        'filter_status':  filter_status,
+        'filter_session': filter_session,
+        'search_query':   search_query,
+    })
+
 
 # TUTOR DASHBOARD 
 
@@ -449,12 +541,15 @@ def tutor_module_students(request, module_id):
 
 
 # STUDENT DASHBOARD 
-
+# ── US13: STUDENT ATTENDANCE VIEW ────────────────────────────────
 @login_required
 @role_required('student')
 def student_dashboard(request):
     records       = []
     student_found = False
+    selected_module = request.GET.get('module', '')
+    selected_status = request.GET.get('status', '')
+
     try:
         all_students = requests.get(f"{API}/students", timeout=5).json().get('students', [])
         my_student   = next(
@@ -462,26 +557,81 @@ def student_dashboard(request):
             if s['student_number'] == request.user.student_number),
             None
         )
+
         if my_student:
             student_found = True
             student_id    = my_student['student_id']
-            enrolments    = requests.get(f"{API}/enrolments", timeout=5).json().get('enrolments', [])
-            all_modules   = {
+
+            # Get all modules and enrolments
+            all_modules  = {
                 m['module_id']: m
                 for m in requests.get(f"{API}/modules", timeout=5).json().get('modules', [])
             }
-            for e in enrolments:
-                if e['student_id'] == student_id:
-                    module = all_modules.get(e['module_id'], {})
+            enrolments = requests.get(
+                f"{API}/enrolments", timeout=5
+            ).json().get('enrolments', [])
+            my_enrolments = [e for e in enrolments if e['student_id'] == student_id]
+
+            # Get attendance records per session
+            all_sessions = requests.get(
+                f"{API}/sessions/all", timeout=5
+            ).json().get('sessions', [])
+
+            for e in my_enrolments:
+                module = all_modules.get(e['module_id'], {})
+
+                # Find sessions for this module
+                module_sessions = [
+                    s for s in all_sessions
+                    if s['module_id'] == e['module_id']
+                ]
+
+                for session in module_sessions:
+                    # Get attendance for this session
+                    att = requests.get(
+                        f"{API}/sessions/{session['session_id']}/attendance",
+                        timeout=5
+                    ).json()
+
+                    # Find this student's record in the session
+                    my_record = next(
+                        (r for r in att.get('records', [])
+                        if r['student_id'] == student_id),
+                        None
+                    )
+
+                    status = my_record['result'] if my_record else 'absent'
+
                     records.append({
-                        'module_code': module.get('module_code', ''),
-                        'module_name': module.get('module_name', ''),
-                        'enrolled_at': e.get('enrolled_at', ''),
+                        'module_code':  module.get('module_code', ''),
+                        'module_name':  module.get('module_name', ''),
+                        'session_id':   session['session_id'],
+                        'date':         session.get('start_time', '')[:10],
+                        'time':         session.get('start_time', '')[11:16],
+                        'status':       status,
+                        'tap_time':     my_record['tap_time'][:16].replace('T', ' ') if my_record else '—',
                     })
+
+            # Apply filters
+            if selected_module:
+                records = [r for r in records if r['module_code'] == selected_module]
+            if selected_status:
+                records = [r for r in records if r['status'] == selected_status]
+
+            # Sort newest first
+            records.sort(key=lambda x: x['date'], reverse=True)
+
     except Exception as ex:
-        messages.warning(request, f'Could not load data: {ex}')
+        messages.warning(request, f'Could not load attendance: {ex}')
+
+    # Get unique module codes for filter dropdown
+    all_module_codes = list({r['module_code'] for r in records}) if records else []
 
     return render(request, 'core/student_dashboard.html', {
-        'records':       records,
-        'student_found': student_found,
+        'records':          records,
+        'student_found':    student_found,
+        'selected_module':  selected_module,
+        'selected_status':  selected_status,
+        'all_module_codes': all_module_codes,
+        'student':          request.user,
     })
