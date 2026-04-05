@@ -1,0 +1,173 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+<h5 class="fw-semibold mb-0">All attendance records</h5>
+<a href="{% url 'admin_dashboard' %}"
+    class="btn btn-outline-secondary btn-sm">
+    Back to dashboard
+</a>
+</div>
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+<div class="col-md-3">
+    <div class="card text-center p-3">
+    <div class="text-muted small">Total records</div>
+    <div class="fs-3 fw-semibold">{{ summary.total }}</div>
+    </div>
+</div>
+<div class="col-md-3">
+    <div class="card text-center p-3">
+    <div class="text-muted small">Present</div>
+    <div class="fs-3 fw-semibold text-success">{{ summary.present }}</div>
+    </div>
+</div>
+<div class="col-md-3">
+    <div class="card text-center p-3">
+    <div class="text-muted small">Late</div>
+    <div class="fs-3 fw-semibold text-warning">{{ summary.late }}</div>
+    </div>
+</div>
+<div class="col-md-3">
+    <div class="card text-center p-3">
+    <div class="text-muted small">Absent</div>
+    <div class="fs-3 fw-semibold text-danger">{{ summary.absent }}</div>
+    </div>
+</div>
+</div>
+
+<!-- Filters and search -->
+<div class="card p-3 mb-4">
+<form method="get" class="row g-2 align-items-end">
+
+    <!-- Search -->
+    <div class="col-md-3">
+    <label class="form-label text-muted small mb-1">Search student</label>
+    <input type="text" name="search" class="form-control form-control-sm"
+            placeholder="Name or student number"
+            value="{{ search_query }}">
+    </div>
+
+    <!-- Module filter -->
+    <div class="col-md-2">
+    <label class="form-label text-muted small mb-1">Module</label>
+    <select name="module" class="form-select form-select-sm">
+        <option value="">All modules</option>
+        {% for m in modules %}
+        <option value="{{ m.module_code }}"
+        {% if filter_module == m.module_code %}selected{% endif %}>
+        {{ m.module_code }}
+        </option>
+        {% endfor %}
+    </select>
+    </div>
+
+    <!-- Status filter -->
+    <div class="col-md-2">
+    <label class="form-label text-muted small mb-1">Status</label>
+    <select name="status" class="form-select form-select-sm">
+        <option value="">All statuses</option>
+        <option value="present" {% if filter_status == 'present' %}selected{% endif %}>Present</option>
+        <option value="late"    {% if filter_status == 'late'    %}selected{% endif %}>Late</option>
+        <option value="absent"  {% if filter_status == 'absent'  %}selected{% endif %}>Absent</option>
+    </select>
+    </div>
+
+    <!-- Session filter -->
+    <div class="col-md-2">
+    <label class="form-label text-muted small mb-1">Session ID</label>
+    <select name="session" class="form-select form-select-sm">
+        <option value="">All sessions</option>
+        {% for s in sessions %}
+        <option value="{{ s.session_id }}"
+        {% if filter_session == s.session_id|stringformat:"s" %}selected{% endif %}>
+        #{{ s.session_id }} — {{ s.start_time|slice:":10" }}
+        </option>
+        {% endfor %}
+    </select>
+    </div>
+
+    <div class="col-md-2">
+    <button type="submit" class="btn btn-primary btn-sm w-100">
+        Search &amp; filter
+    </button>
+    </div>
+    <div class="col-md-1">
+    <a href="{% url 'admin_attendance' %}"
+        class="btn btn-outline-secondary btn-sm w-100">
+        Clear
+    </a>
+    </div>
+
+</form>
+</div>
+
+<!-- Records table -->
+{% if records %}
+<div class="card">
+<div class="table-responsive">
+    <table class="table table-hover mb-0" id="records-table">
+    <thead class="table-light">
+        <tr>
+        <th>#</th>
+        <th>Session</th>
+        <th>Module</th>
+        <th>Student</th>
+        <th>Date</th>
+        <th>Scan time</th>
+        <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in records %}
+        <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>
+            <span class="badge bg-secondary">#{{ r.session_id }}</span>
+            <span class="text-muted small ms-1">{{ r.session_status }}</span>
+        </td>
+        <td>
+            <span class="fw-semibold">{{ r.module_code }}</span>
+            <div class="text-muted small">{{ r.module_name }}</div>
+        </td>
+        <td>
+            <span class="fw-semibold">{{ r.student_name }}</span>
+            <div class="text-muted small">{{ r.student_number }}</div>
+        </td>
+        <td>{{ r.date }}</td>
+        <td>{{ r.tap_time }}</td>
+        <td>
+            {% if r.status == 'present' %}
+            <span class="badge bg-success">Present</span>
+            {% elif r.status == 'late' %}
+            <span class="badge bg-warning text-dark">Late</span>
+            {% elif r.status == 'absent' %}
+            <span class="badge bg-danger">Absent</span>
+            {% else %}
+            <span class="badge bg-secondary">{{ r.status }}</span>
+            {% endif %}
+        </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    </table>
+</div>
+</div>
+<div class="text-muted small mt-2">
+Showing {{ records|length }} record{{ records|length|pluralize }}
+</div>
+
+{% else %}
+<div class="alert alert-info">
+{% if search_query or filter_module or filter_status or filter_session %}
+    No records match your search or filters.
+    <a href="{% url 'admin_attendance' %}">Clear all filters</a>
+{% else %}
+    No attendance records found yet.
+    Records appear here after sessions are run and students scan in.
+{% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
