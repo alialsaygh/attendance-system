@@ -113,3 +113,18 @@ def close_session(session_id: int):
         "message":      f"Session closed. {absent_count} student(s) marked absent."
     }), 200
     
+@sessions_bp.get("/sessions/all")
+def get_all_sessions():
+    sessions = Session.query.order_by(Session.session_id.desc()).all()
+    return jsonify({
+        "sessions": [
+            {
+                "session_id": s.session_id,
+                "module_id":  s.module_id,
+                "start_time": s.start_time.isoformat(),
+                "status":     s.status,
+                "location":   s.location,
+            }
+            for s in sessions
+        ]
+    }), 200
