@@ -1,36 +1,136 @@
 {% extends 'core/base.html' %}
 {% block content %}
-<h5 class="fw-semibold mb-4">My attendance</h5>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+<div>
+    <h5 class="fw-semibold mb-0">My attendance</h5>
+    <span class="text-muted small">
+    {{ student.first_name }} {{ student.last_name }}
+    &mdash; {{ student.student_number }}
+    </span>
+</div>
+</div>
 
 {% if not student_found %}
 <div class="alert alert-warning">
-Your student profile was not found. Ask your admin to check
-your student number is set correctly on your account.
+    Your student profile was not found in the system.
+    Ask your admin to make sure your student number is linked correctly.
 </div>
-{% elif records %}
+
+{% else %}
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+    <div class="card text-center p-3">
+        <div class="text-muted small">Total sessions</div>
+        <div class="fs-3 fw-semibold">{{ records|length }}</div>
+    </div>
+    </div>
+    <div class="col-md-3">
+    <div class="card text-center p-3">
+        <div class="text-muted small">Present</div>
+        <div class="fs-3 fw-semibold text-success">
+        {% with count=0 %}
+            {% for r in records %}{% if r.status == 'present' %}
+            {% with count=count|add:1 %}{% endwith %}
+            {% endif %}{% endfor %}
+        {% endwith %}
+        {{ records|length }}
+        </div>
+    </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card p-3 mb-4">
+    <form method="get" class="row g-2 align-items-end">
+    <div class="col-md-4">
+        <label class="form-label text-muted small mb-1">Filter by module</label>
+        <select name="module" class="form-select form-select-sm">
+        <option value="">All modules</option>
+        {% for code in all_module_codes %}
+        <option value="{{ code }}"
+            {% if selected_module == code %}selected{% endif %}>
+            {{ code }}
+        </option>
+        {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label text-muted small mb-1">Filter by status</label>
+        <select name="status" class="form-select form-select-sm">
+        <option value="">All statuses</option>
+        <option value="present"  {% if selected_status == 'present'  %}selected{% endif %}>Present</option>
+        <option value="late"     {% if selected_status == 'late'     %}selected{% endif %}>Late</option>
+        <option value="absent"   {% if selected_status == 'absent'   %}selected{% endif %}>Absent</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary btn-sm w-100">Apply</button>
+    </div>
+    <div class="col-md-2">
+        <a href="{% url 'student_dashboard' %}"
+        class="btn btn-outline-secondary btn-sm w-100">Clear</a>
+    </div>
+    </form>
+</div>
+
+<!-- Records table -->
+{% if records %}
 <div class="card">
-<table class="table table-hover mb-0">
-    <thead class="table-light">
-    <tr>
-        <th>Module code</th>
-        <th>Module name</th>
-        <th>Enrolled since</th>
-    </tr>
-    </thead>
-    <tbody>
-    {% for r in records %}
-    <tr>
-        <td>{{ r.module_code }}</td>
-        <td>{{ r.module_name }}</td>
-        <td>{{ r.enrolled_at }}</td>
-    </tr>
-    {% endfor %}
-    </tbody>
-</table>
+    <div class="table-responsive">
+    <table class="table table-hover mb-0">
+        <thead class="table-light">
+        <tr>
+            <th>#</th>
+            <th>Module</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Scan time</th>
+            <th>Status</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for r in records %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>
+            <span class="fw-semibold">{{ r.module_code }}</span>
+            <div class="text-muted small">{{ r.module_name }}</div>
+            </td>
+            <td>{{ r.date }}</td>
+            <td>{{ r.time }}</td>
+            <td>{{ r.tap_time }}</td>
+            <td>
+            {% if r.status == 'present' %}
+                <span class="badge bg-success">Present</span>
+            {% elif r.status == 'late' %}
+                <span class="badge bg-warning text-dark">Late</span>
+            {% elif r.status == 'absent' %}
+                <span class="badge bg-danger">Absent</span>
+            {% else %}
+                <span class="badge bg-secondary">{{ r.status }}</span>
+            {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
 </div>
+
 {% else %}
 <div class="alert alert-info">
-You are not enrolled in any modules yet.
+    {% if selected_module or selected_status %}
+    No records match your filters.
+    <a href="{% url 'student_dashboard' %}">Clear filters</a>
+    {% else %}
+    No attendance records found yet.
+    Your records will appear here once sessions have been recorded.
+    {% endif %}
 </div>
+{% endif %}
+
 {% endif %}
 {% endblock %}

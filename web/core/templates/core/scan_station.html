@@ -83,56 +83,66 @@ No active session. Go back and start a session first.
 <script>
 // Track previous total to detect new scans
 let prevTotal = {{ all_scanned|length }};
-let lastEntry = null;
 
 function statusBadge(result) {
 if (result === 'present')
     return '<span class="badge bg-success">Present</span>';
 if (result === 'late')
     return '<span class="badge bg-warning text-dark">Late</span>';
-return '<span class="badge bg-secondary">' + result + '</span>';
+    return '<span class="badge bg-secondary">' + result + '</span>';
 }
 
 function updateScanResult(entry) {
-const card   = document.getElementById('scan-result-card');
-const status = document.getElementById('scan-status');
-const name   = document.getElementById('scan-name');
-const time   = document.getElementById('scan-time');
+    const card   = document.getElementById('scan-result-card');
+    const status = document.getElementById('scan-status');
+    const name   = document.getElementById('scan-name');
+    const time   = document.getElementById('scan-time');
 
-if (entry.result === 'present') {
-    card.style.borderColor   = '#198754';
-    card.style.background    = '#d1e7dd';
-    status.style.color       = '#0f5132';
-    status.textContent       = '✓ Present';
-} else if (entry.result === 'late') {
-    card.style.borderColor   = '#ffc107';
-    card.style.background    = '#fff3cd';
-    status.style.color       = '#664d03';
-    status.textContent       = '⚠ Late';
-} else {
-    card.style.borderColor   = '#dc3545';
-    card.style.background    = '#f8d7da';
-    status.style.color       = '#842029';
-    status.textContent       = '✗ ' + entry.result;
-}
-name.textContent = entry.name || '';
-time.textContent = entry.tap_time || '';
+    if (entry.result === 'present') {
+        card.style.borderColor = '#198754';
+        card.style.background  = '#d1e7dd';
+        status.style.color     = '#0f5132';
+        status.textContent     = '✓ Present';
+    } else if (entry.result === 'late') {
+        card.style.borderColor = '#ffc107';
+        card.style.background  = '#fff3cd';
+        status.style.color     = '#664d03';
+        status.textContent     = '⚠ Late';
+    } else {
+        card.style.borderColor = '#dc3545';
+        card.style.background  = '#f8d7da';
+        status.style.color     = '#842029';
+        status.textContent     = '✗ ' + entry.result;
+    }
+    name.textContent = entry.name     || '';
+    time.textContent = entry.tap_time || '';
 }
 
 function resetScanCard() {
-const card = document.getElementById('scan-result-card');
-card.style.borderColor  = '';
-card.style.background   = '';
-document.getElementById('scan-status').style.color = '';
-document.getElementById('scan-status').textContent = 'Waiting for scan...';
-document.getElementById('scan-name').textContent   = '';
-document.getElementById('scan-time').textContent   = '';
+    const card = document.getElementById('scan-result-card');
+    card.style.borderColor = '';
+    card.style.background  = '';
+    document.getElementById('scan-status').style.color   = '';
+    document.getElementById('scan-status').textContent   = 'Waiting for scan...';
+    document.getElementById('scan-name').textContent     = '';
+    document.getElementById('scan-time').textContent     = '';
 }
 
 function refresh() {
 fetch('/tutor/attendance/live-data/')
-    .then(r => r.json())
-    .then(data => {
+.then(r => {
+    // Session expired or permission denied — redirect to login
+    if (r.status === 401) {
+        window.location.href = '/login/';
+        return null;
+    }
+    // Permission error — stop polling silently
+    if (r.status === 403) return null;
+    return r.json();
+})
+.then(data => {
+    if (!data) return;
+
     const present  = data.present || [];
     const late     = data.late    || [];
     const all      = [...present, ...late];
@@ -141,41 +151,32 @@ fetch('/tutor/attendance/live-data/')
     document.getElementById('count-present').textContent = present.length;
     document.getElementById('count-late').textContent    = late.length;
 
-      // New scan detected — show result on screen
     if (newTotal > prevTotal) {
-        // Sort by tap_time descending to get latest
         const sorted = all.slice().sort(
         (a, b) => new Date(b.tap_time) - new Date(a.tap_time)
-        );
-        lastEntry = sorted[0];
-        updateScanResult(lastEntry);
-
-        // Reset after 4 seconds
-        setTimeout(resetScanCard, 4000);
-        prevTotal = newTotal;
+    );
+    updateScanResult(sorted[0]);
+    setTimeout(resetScanCard, 4000);
+    prevTotal = newTotal;
     }
 
-      // Update table
     const tbody = document.getElementById('scanned-body');
     if (all.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No students scanned yet</td></tr>';
-        return;
+    return;
     }
-      // Sort by tap_time ascending for table
-    const sorted = all.slice().sort(
-        (a, b) => new Date(a.tap_time) - new Date(b.tap_time)
-    );
+    const sorted = all.slice().sort((a, b) => new Date(a.tap_time) - new Date(b.tap_time));
     tbody.innerHTML = sorted.map((p, i) => `
-        <tr>
+    <tr>
         <td>${i + 1}</td>
         <td>${p.student_number}</td>
         <td>${p.name}</td>
         <td>${p.tap_time}</td>
         <td>${statusBadge(p.result)}</td>
-        </tr>
+    </tr>
     `).join('');
-    })
-    .catch(() => {});
+})
+.catch(() => {});
 }
 
 setInterval(refresh, 2000);

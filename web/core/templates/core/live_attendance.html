@@ -61,42 +61,50 @@
 
 <script>
 function statusBadge(result) {
-if (result === 'present')
-    return '<span class="badge bg-success">Present</span>';
-if (result === 'late')
-    return '<span class="badge bg-warning text-dark">Late</span>';
-if (result === 'absent')
-    return '<span class="badge bg-danger">Absent</span>';
-return '<span class="badge bg-secondary">' + result + '</span>';
+    if (result === 'present')
+        return '<span class="badge bg-success">Present</span>';
+    if (result === 'late')
+        return '<span class="badge bg-warning text-dark">Late</span>';
+    if (result === 'absent')
+        return '<span class="badge bg-danger">Absent</span>';
+    return '<span class="badge bg-secondary">' + result + '</span>';
 }
 
 function refresh() {
 fetch('/tutor/attendance/live-data/')
-    .then(r => r.json())
-    .then(data => {
+.then(r => {
+    if (r.status === 401) {
+        window.location.href = '/login/';
+    return null;
+    }
+        if (r.status === 403) return null;
+    return r.json();
+})
+.then(data => {
+    if (!data) return;
+
     const present = data.present || [];
     const late    = data.late    || [];
-    const total   = data.total   || 0;
     const all     = [...present, ...late];
 
     document.getElementById('count-present').textContent = present.length;
     document.getElementById('count-late').textContent    = late.length;
-    document.getElementById('count-total').textContent   = total;
+    document.getElementById('count-total').textContent   = all.length;
 
     const tbody = document.getElementById('attendance-body');
     if (all.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Waiting for scans...</td></tr>';
-        return;
+    return;
     }
     tbody.innerHTML = all.map((p, i) => `
         <tr>
-        <td>${i + 1}</td>
-        <td>${p.student_number}</td>
-        <td>${p.name}</td>
-        <td>${p.tap_time}</td>
-        <td>${statusBadge(p.result)}</td>
+            <td>${i + 1}</td>
+            <td>${p.student_number}</td>
+            <td>${p.name}</td>
+            <td>${p.tap_time}</td>
+            <td>${statusBadge(p.result)}</td>
         </tr>
-    `).join('');
+        `).join('');
     })
     .catch(() => {});
 }
