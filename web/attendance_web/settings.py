@@ -82,3 +82,8 @@ LOGOUT_REDIRECT_URL = '/login/'
 
 # Flask API base URL
 FLASK_API_URL = 'http://127.0.0.1:5000/api'
+
+# Keep session alive for 8 hours even after browser close
+SESSION_COOKIE_AGE = 28800
+SESSION_SAVE_EVERY_REQUEST = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
