@@ -30,7 +30,6 @@ urlpatterns = [
     path('tutor/module/<int:module_id>/students/',views.tutor_module_students, name='tutor_module_students'),
     path('tutor/module/<int:module_id>/history/', views.tutor_attendance_history, name='tutor_attendance_history'),
     
-
     # Student
     path('student/dashboard/', views.student_dashboard, name='student_dashboard'),
 ]
