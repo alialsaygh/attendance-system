@@ -635,3 +635,68 @@ def student_dashboard(request):
         'all_module_codes': all_module_codes,
         'student':          request.user,
     })
+    
+# tutor attendance history - shows all past sessions for a module
+@login_required
+@role_required('tutor')
+def tutor_attendance_history(request, module_id):
+    sessions_data = []
+    module_info = {}
+    try:
+        # module details
+        module_info = requests.get(API + "/modules/" + str(module_id)).json()
+        
+        # get all sessions for this module
+        all_sessions = requests.get(API + "/sessions/all").json().get('sessions', [])
+        module_sessions = [s for s in all_sessions if s['module_id'] == module_id]
+        
+        # sort newest first
+        module_sessions.sort(key=lambda x: x.get('start_time', ''), reverse=True)
+        
+        # get all students for lookup
+        all_students = requests.get(API + "/students").json().get('students', [])
+        students_dict = {s['student_id']: s for s in all_students}
+        
+        # for each session get attendance records
+        for session in module_sessions:
+            sid = session['session_id']
+            att = requests.get(API + "/sessions/" + str(sid) + "/attendance").json()
+            records = att.get('records', [])
+            
+            # count each status
+            present_count = len([r for r in records if r['result'] == 'present'])
+            late_count    = len([r for r in records if r['result'] == 'late'])
+            absent_count  = len([r for r in records if r['result'] == 'absent'])
+            total         = present_count + late_count + absent_count
+            
+            # build student rows for this session
+            student_rows = []
+            for r in records:
+                student = students_dict.get(r['student_id'], {})
+                student_rows.append({
+                    'name':           student.get('first_name', '') + ' ' + student.get('last_name', ''),
+                    'student_number': student.get('student_number', ''),
+                    'status':         r['result'],
+                    'tap_time':       r.get('tap_time', '')[:16].replace('T', ' ') if r.get('tap_time') else '-',
+                })
+
+            sessions_data.append({
+                'session_id':    sid,
+                'date':          session.get('start_time', '')[:10],
+                'time':          session.get('start_time', '')[11:16],
+                'status':        session.get('status', ''),
+                'present_count': present_count,
+                'late_count':    late_count,
+                'absent_count':  absent_count,
+                'total':         total,
+                'student_rows':  student_rows,
+            })
+
+    except Exception as e:
+        print("history error:", e)
+        messages.warning(request, 'Could not load attendance history.')
+    
+    return render(request, 'core/tutor_attendance_history.html', {
+        'module':   module_info,
+        'sessions': sessions_data,
+    })
