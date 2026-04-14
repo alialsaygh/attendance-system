@@ -14,7 +14,7 @@
     <button class="btn btn-danger btn-sm">Close session</button>
 </form>
 </div>
-<!-- Module student lists -->
+<!-- Module  lists -->
 <h6 class="fw-semibold mt-4 mb-2">Your modules</h6>
 <div class="card">
 <table class="table table-hover mb-0">
@@ -58,6 +58,19 @@
 {% else %}
 <div class="alert alert-warning">No active session. Start one below.</div>
 {% endif %}
+
+<td>
+<div class="d-flex gap-2">
+<a href="{% url 'tutor_module_students' m.module_id %}"
+    class="btn btn-sm btn-outline-primary">
+    View students
+</a>
+<a href="{% url 'tutor_attendance_history' m.module_id %}"
+    class="btn btn-sm btn-outline-secondary">
+    History
+</a>
+</div>
+</td>
 
 <div class="card p-3">
 <h6 class="fw-semibold mb-3">Start a new session</h6>
