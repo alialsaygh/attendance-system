@@ -1,0 +1,131 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+<div>
+    <h5 class="fw-semibold mb-0">
+    Attendance history — {{ module.module_code }}
+    </h5>
+    <span class="text-muted small">{{ module.module_name }}</span>
+</div>
+<a href="{% url 'tutor_dashboard' %}"
+    class="btn btn-outline-secondary btn-sm">
+    Back to dashboard
+</a>
+</div>
+
+{% if sessions %}
+
+<!-- overall summary -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+    <div class="card text-center p-3">
+        <div class="text-muted small">Total sessions</div>
+        <div class="fs-3 fw-semibold">{{ sessions|length }}</div>
+    </div>
+    </div>
+</div>
+
+<!-- session list -->
+{% for session in sessions %}
+<div class="card mb-3">
+
+    <!-- session header -->
+    <div class="card-header d-flex justify-content-between align-items-center"
+        style="background:#f8f9fa; cursor:pointer;"
+        onclick="toggleSession('session-{{ session.session_id }}')">
+    <div>
+        <span class="fw-semibold">
+        Session #{{ session.session_id }}
+        </span>
+        <span class="text-muted ms-2 small">
+        {{ session.date }} at {{ session.time }}
+        </span>
+        {% if session.status == 'active' %}
+        <span class="badge bg-success ms-2">Active</span>
+        {% elif session.status == 'closed' %}
+        <span class="badge bg-secondary ms-2">Closed</span>
+        {% endif %}
+    </div>
+
+    <!-- summary badges -->
+    <div class="d-flex gap-2">
+        <span class="badge bg-success">
+        Present: {{ session.present_count }}
+        </span>
+        <span class="badge bg-warning text-dark">
+        Late: {{ session.late_count }}
+        </span>
+        <span class="badge bg-danger">
+        Absent: {{ session.absent_count }}
+        </span>
+        <span class="badge bg-light text-dark border">
+        Total: {{ session.total }}
+        </span>
+        <span class="text-muted small ms-2">▼</span>
+    </div>
+    </div>
+
+    <!-- student rows - hidden by default, shown on click -->
+    <div id="session-{{ session.session_id }}" style="display:none;">
+    <table class="table table-hover mb-0">
+        <thead class="table-light">
+        <tr>
+            <th>Student number</th>
+            <th>Name</th>
+            <th>Scan time</th>
+            <th>Status</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in session.student_rows %}
+        <tr>
+            <td>{{ row.student_number }}</td>
+            <td>{{ row.name }}</td>
+            <td>{{ row.tap_time }}</td>
+            <td>
+            {% if row.status == 'present' %}
+                <span class="badge bg-success">Present</span>
+            {% elif row.status == 'late' %}
+                <span class="badge bg-warning text-dark">Late</span>
+            {% elif row.status == 'absent' %}
+                <span class="badge bg-danger">Absent</span>
+            {% else %}
+                <span class="badge bg-secondary">{{ row.status }}</span>
+            {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center text-muted py-3">
+            No records for this session
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+</div>
+{% endfor %}
+
+{% else %}
+<div class="alert alert-info">
+    No sessions have been run for this module yet.
+    Start a session from the tutor dashboard to begin recording attendance.
+</div>
+{% endif %}
+
+<script>
+// toggle the student rows table open and closed
+function toggleSession(id) {
+var el = document.getElementById(id);
+if (el.style.display === 'none') {
+    el.style.display = 'block';
+} else {
+    el.style.display = 'none';
+}
+}
+</script>
+
+{% endblock %}
