@@ -14,38 +14,48 @@
     <button class="btn btn-danger btn-sm">Close session</button>
 </form>
 </div>
-<!-- Module  lists -->
+<!-- Module student lists -->
 <h6 class="fw-semibold mt-4 mb-2">Your modules</h6>
 <div class="card">
-<table class="table table-hover mb-0">
-    <thead class="table-light">
-    <tr>
-        <th>Code</th>
-        <th>Name</th>
-        <th>Action</th>
-    </tr>
-    </thead>
-    <tbody>
-    {% for m in modules %}
-    <tr>
-        <td>{{ m.module_code }}</td>
-        <td>{{ m.module_name }}</td>
-        <td>
-        <a href="{% url 'tutor_module_students' m.module_id %}"
-            class="btn btn-sm btn-outline-primary">
-            View students
-        </a>
-        </td>
-    </tr>
-    {% empty %}
-    <tr>
-        <td colspan="3" class="text-center text-muted py-3">
-        No modules available
-        </td>
-    </tr>
-    {% endfor %}
-    </tbody>
-</table>
+    <table class="table table-hover mb-0">
+        <thead class="table-light">
+        <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for m in modules %}
+        <tr>
+            <td>{{ m.module_code }}</td>
+            <td>{{ m.module_name }}</td>
+            <td>
+            {% if m.module_id %}
+            <div class="d-flex gap-2">
+                <a href="{% url 'tutor_module_students' m.module_id %}"
+                    class="btn btn-sm btn-outline-primary">
+                    View students
+                </a>
+                <a href="{% url 'tutor_attendance_history' m.module_id %}"
+                    class="btn btn-sm btn-outline-secondary">
+                    History
+                </a>
+            </div>
+            {% else %}
+            <span class="text-muted small">No ID</span>
+            {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3" class="text-center text-muted py-3">
+                No modules available
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
 </div>
 <div class="mb-3 d-flex gap-2">
 <a href="{% url 'scan_station' %}" class="btn btn-outline-primary">
@@ -59,18 +69,7 @@
 <div class="alert alert-warning">No active session. Start one below.</div>
 {% endif %}
 
-<td>
-<div class="d-flex gap-2">
-<a href="{% url 'tutor_module_students' m.module_id %}"
-    class="btn btn-sm btn-outline-primary">
-    View students
-</a>
-<a href="{% url 'tutor_attendance_history' m.module_id %}"
-    class="btn btn-sm btn-outline-secondary">
-    History
-</a>
-</div>
-</td>
+
 
 <div class="card p-3">
 <h6 class="fw-semibold mb-3">Start a new session</h6>
