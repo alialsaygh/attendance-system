@@ -1,0 +1,110 @@
+{% extends 'core/base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+<h5 class="fw-semibold mb-0">My profile</h5>
+<a href="{% url 'student_dashboard' %}"
+    class="btn btn-outline-secondary btn-sm">
+    Back to dashboard
+</a>
+</div>
+
+{% if not my_student %}
+<!-- student exists in django but not found in flask -->
+<div class="alert alert-warning">
+    Your student profile could not be found in the system.
+    Please contact your admin to make sure your account is set up correctly.
+</div>
+
+{% else %}
+
+<!-- account details card -->
+<div class="row g-4">
+
+    <div class="col-md-5">
+    <div class="card p-4 h-100">
+        <h6 class="fw-semibold mb-3">Account information</h6>
+
+        <table class="table table-borderless mb-0">
+        <tr>
+            <td class="text-muted" style="width:40%">Full name</td>
+            <td class="fw-semibold">
+                {{ user.first_name }} {{ user.last_name }}
+            </td>
+        </tr>
+        <tr>
+            <td class="text-muted">Student number</td>
+            <td class="fw-semibold">{{ user.student_number }}</td>
+        </tr>
+        <tr>
+            <td class="text-muted">Email</td>
+            <td>{{ user.email|default:"Not set" }}</td>
+        </tr>
+        <tr>
+            <td class="text-muted">Username</td>
+            <td>{{ user.username }}</td>
+        </tr>
+        <tr>
+            <td class="text-muted">Role</td>
+            <td>
+                <span class="badge bg-primary">{{ user.role }}</span>
+            </td>
+        </tr>
+        <tr>
+            <td class="text-muted">Account status</td>
+            <td>
+            {% if user.is_active %}
+                <span class="badge bg-success">Active</span>
+            {% else %}
+                <span class="badge bg-danger">Inactive</span>
+            {% endif %}
+            </td>
+        </tr>
+        </table>
+
+        <!-- read only notice -->
+        <p class="text-muted small mt-3 mb-0">
+            This information is read only.
+            Contact your admin if any details are incorrect.
+        </p>
+    </div>
+    </div>
+
+    <!-- enrolled modules section -->
+    <div class="card p-4">
+        <h6 class="fw-semibold mb-3">Enrolled modules</h6>
+
+        {% if my_modules %}
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+            <tr>
+                <th>Code</th>
+                <th>Module name</th>
+                <th>Enrolled since</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for m in my_modules %}
+            <tr>
+                <td class="fw-semibold">{{ m.module_code }}</td>
+                <td>{{ m.module_name }}</td>
+                <td class="text-muted small">{{ m.enrolled_at }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-info mb-0">
+            You are not enrolled in any modules yet.
+            Contact your admin if this looks wrong.
+        </div>
+        {% endif %}
+
+    </div>
+    </div>
+
+</div>
+
+{% endif %}
+
+{% endblock %}
