@@ -173,12 +173,32 @@ def get_active_attendance():
     }), 200
 
 
-@attendance_bp.get("/attendance/<int:student_id>/<int:module_id>/percentage")
-def get_attendance_percentage(student_id, module_id):
-    percentage = calculate_attendance_percentage(student_id, module_id)
+@attendance_bp.get("/students/<int:student_id>/attendance-summary")
+def get_attendance_summary(student_id):
+    student = Student.query.get(student_id)
+    if not student:
+        return jsonify({"error": "not_found", "message": "Student not found"}), 404
+
+    enrolments = Enrolment.query.filter_by(student_id=student_id).all()
+
+    modules_summary = []
+    for enrolment in enrolments:
+        module = Module.query.get(enrolment.module_id)
+        if not module:
+            continue
+
+        percentage = calculate_attendance_percentage(student_id, module.module_id)
+
+        modules_summary.append({
+            "module_id": module.module_id,
+            "module_code": module.module_code,
+            "module_name": module.module_name,
+            "attendance_percentage": percentage
+        })
 
     return jsonify({
-        "student_id": student_id,
-        "module_id": module_id,
-        "attendance_percentage": percentage
+        "student_id": student.student_id,
+        "student_number": student.student_number,
+        "student_name": f"{student.first_name} {student.last_name}",
+        "modules": modules_summary
     }), 200
