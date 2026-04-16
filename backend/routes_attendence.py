@@ -6,6 +6,25 @@ attendance_bp = Blueprint("attendance_bp", __name__)
 
 LATE_THRESHOLD_MINUTES = 15
 
+def calculate_attendance_percentage(student_id, module_id):
+    total_sessions = Session.query.filter_by(module_id=module_id).count()
+
+    if total_sessions == 0:
+        return 0.0
+
+    attended_sessions = (
+        db.session.query(AttendanceRecord.session_id)
+        .join(Session, Session.session_id == AttendanceRecord.session_id)
+        .filter(
+            AttendanceRecord.student_id == student_id,
+            Session.module_id == module_id,
+            AttendanceRecord.result.in_(["present", "late"])
+        )
+        .distinct()
+        .count()
+    )
+
+    return round((attended_sessions / total_sessions) * 100, 2)
 
 @attendance_bp.post("/attendance/scan")
 def scan_attendance():
@@ -16,13 +35,11 @@ def scan_attendance():
     if not card_uid:
         return jsonify({"error": "missing_fields", "message": "Missing card_uid"}), 400
 
-    # Active session 
     active = Session.query.filter_by(status="active").first()
     if not active:
         return jsonify({"result": "rejected_no_active_session",
                         "message": "No active session"}), 200
 
-    # Known card and linked student
     card = Card.query.filter_by(card_uid=card_uid).first()
     if not card:
         return jsonify({"result": "rejected_unknown_card",
@@ -33,7 +50,6 @@ def scan_attendance():
         return jsonify({"result": "rejected_unknown_card",
                         "message": "Card not linked to a valid student"}), 200
 
-    # Enrolment check
     enrolled = Enrolment.query.filter_by(
         student_id=student.student_id,
         module_id=active.module_id
@@ -42,7 +58,6 @@ def scan_attendance():
         return jsonify({"result": "rejected_not_enrolled",
                         "message": "Student not enrolled in this module"}), 200
 
-    # Duplicate check
     existing = AttendanceRecord.query.filter_by(
         session_id=active.session_id,
         student_id=student.student_id
@@ -54,7 +69,6 @@ def scan_attendance():
             "student_name": f"{student.first_name} {student.last_name}",
         }), 200
 
-    # Present or late?
     now = datetime.utcnow()
     minutes_since_start = (now - active.start_time).total_seconds() / 60
     result = "present" if minutes_since_start <= LATE_THRESHOLD_MINUTES else "late"
@@ -156,4 +170,15 @@ def get_active_attendance():
         "present":     present,
         "late":        late,
         "total":       len(present) + len(late),
+    }), 200
+
+
+@attendance_bp.get("/attendance/<int:student_id>/<int:module_id>/percentage")
+def get_attendance_percentage(student_id, module_id):
+    percentage = calculate_attendance_percentage(student_id, module_id)
+
+    return jsonify({
+        "student_id": student_id,
+        "module_id": module_id,
+        "attendance_percentage": percentage
     }), 200
