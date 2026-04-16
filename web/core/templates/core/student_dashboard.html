@@ -8,6 +8,12 @@
     {{ student.first_name }} {{ student.last_name }}
     &mdash; {{ student.student_number }}
     </span>
+    <div class="mb-3">
+        <a href="{% url 'student_profile' %}"
+            class="btn btn-outline-secondary btn-sm">
+            View my profile
+        </a>
+    </div>
 </div>
 </div>
 

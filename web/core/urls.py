@@ -28,8 +28,9 @@ urlpatterns = [
     path('tutor/live-attendance/', views.live_attendance, name='live_attendance'),
     path('tutor/attendance/live-data/',views.live_attendance_data, name='live_attendance_data'),
     path('tutor/module/<int:module_id>/students/',views.tutor_module_students, name='tutor_module_students'),
+    path('tutor/module/<int:module_id>/history/', views.tutor_attendance_history, name='tutor_attendance_history'),
     
-
     # Student
     path('student/dashboard/', views.student_dashboard, name='student_dashboard'),
+    path('student/profile/', views.student_profile, name='student_profile'),
 ]

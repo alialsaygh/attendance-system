@@ -541,7 +541,7 @@ def tutor_module_students(request, module_id):
 
 
 # STUDENT DASHBOARD 
-# ── US13: STUDENT ATTENDANCE VIEW ────────────────────────────────
+# ── STUDENT ATTENDANCE VIEW ────────────────────────────────
 @login_required
 @role_required('student')
 def student_dashboard(request):
@@ -635,8 +635,60 @@ def student_dashboard(request):
         'all_module_codes': all_module_codes,
         'student':          request.user,
     })
+
+# STUDENT PROFILE VIEW
+@login_required
+@role_required('student')
+def student_profile(request):
+    my_student = None
+    my_modules = []
     
-# tutor attendance history - shows all past sessions for a module
+    try:
+        # get all students from flask and find this one by student number
+        all_students = requests.get(API + "/students").json().get('students', [])
+        
+        for s in all_students:
+            if s['student_number'] == request.user.student_number:
+                my_student = s
+                break
+
+        if my_student is None:
+            # student exists in django but not in flask database
+            print("student not found in flask:", request.user.student_number)
+
+        else:
+            my_id = my_student['student_id']
+
+            # get modules this student is enrolled in
+            all_enrolments = requests.get(API + "/enrolments").json().get('enrolments', [])
+            my_enrolments = [e for e in all_enrolments if e['student_id'] == my_id]
+
+            # get all modules so we can look up names
+            all_modules = requests.get(API + "/modules").json().get('modules', [])
+            modules_dict = {}
+            for m in all_modules:
+                modules_dict[m['module_id']] = m
+
+            # build the list of modules the student is enrolled in
+            for e in my_enrolments:
+                mod = modules_dict.get(e['module_id'])
+                if mod:
+                    my_modules.append({
+                        'module_code': mod['module_code'],
+                        'module_name': mod['module_name'],
+                        'enrolled_at': e.get('enrolled_at', '')[:10],
+                    })
+    except Exception as e:
+        print("student profile error:", e)
+        messages.warning(request, 'Could not load profile data. Is Flask running?')
+
+    return render(request, 'core/student_profile.html', {
+        'my_student': my_student,
+        'my_modules': my_modules,
+        'user':       request.user,
+    })
+    
+# tutor attendance history 
 @login_required
 @role_required('tutor')
 def tutor_attendance_history(request, module_id):
