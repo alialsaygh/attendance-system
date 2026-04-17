@@ -3,7 +3,7 @@ import requests
 from mfrc522 import SimpleMFRC522
 
 
-FLASK_API = "http://10.32.13.101:5000/api" 
+FLASK_API = " http://10.104.21.70:5000/api" 
 DEVICE_ID = "pi-rfid-reader-01"
 
 
