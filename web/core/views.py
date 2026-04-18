@@ -547,93 +547,94 @@ def tutor_module_students(request, module_id):
 def student_dashboard(request):
     records       = []
     student_found = False
+    summary         = None
+    overall_pct     = None
+    
     selected_module = request.GET.get('module', '')
     selected_status = request.GET.get('status', '')
 
     try:
-        all_students = requests.get(f"{API}/students", timeout=5).json().get('students', [])
-        my_student   = next(
-            (s for s in all_students
-            if s['student_number'] == request.user.student_number),
-            None
-        )
+        # find this student in flask using their student number
+        all_students = requests.get(API + "/students").json().get('students', [])
 
-        if my_student:
+        my_student = None
+        for s in all_students:
+            if s['student_number'] == request.user.student_number:
+                my_student = s
+                break
+
+        if my_student is not None:
             student_found = True
-            student_id    = my_student['student_id']
+            my_id = my_student['student_id']
 
-            # Get all modules and enrolments
-            all_modules  = {
-                m['module_id']: m
-                for m in requests.get(f"{API}/modules", timeout=5).json().get('modules', [])
-            }
-            enrolments = requests.get(
-                f"{API}/enrolments", timeout=5
-            ).json().get('enrolments', [])
-            my_enrolments = [e for e in enrolments if e['student_id'] == student_id]
+            # get attendance summary including percentages
+            summary_resp = requests.get(API + "/students/" + str(my_id) + "/attendance-summary")
+            if summary_resp.status_code == 200:
+                summary_data = summary_resp.json()
+                summary      = summary_data.get('modules', [])
+                overall_pct  = summary_data.get('overall_percentage', None)
 
-            # Get attendance records per session
-            all_sessions = requests.get(
-                f"{API}/sessions/all", timeout=5
-            ).json().get('sessions', [])
+            # get all modules and enrolments for the records table
+            all_modules = {}
+            for m in requests.get(API + "/modules").json().get('modules', []):
+                all_modules[m['module_id']] = m
+                
+            all_enrolments = requests.get(API + "/enrolments").json().get('enrolments', [])
+            my_enrolments  = [e for e in all_enrolments if e['student_id'] == my_id]
 
-            for e in my_enrolments:
-                module = all_modules.get(e['module_id'], {})
+            all_sessions = requests.get(API + "/sessions/all").json().get('sessions', [])
 
-                # Find sessions for this module
-                module_sessions = [
-                    s for s in all_sessions
-                    if s['module_id'] == e['module_id']
-                ]
+            # build attendance records for the table
+            for enrolment in my_enrolments:
+                mod = all_modules.get(enrolment['module_id'], {})
+                module_sessions = [s for s in all_sessions if s['module_id'] == enrolment['module_id']]
 
                 for session in module_sessions:
-                    # Get attendance for this session
-                    att = requests.get(
-                        f"{API}/sessions/{session['session_id']}/attendance",
-                        timeout=5
-                    ).json()
+                    sid = session['session_id']
+                    att = requests.get(API + "/sessions/" + str(sid) + "/attendance").json()
 
-                    # Find this student's record in the session
-                    my_record = next(
-                        (r for r in att.get('records', [])
-                        if r['student_id'] == student_id),
-                        None
-                    )
+                    my_record = None
+                    for r in att.get('records', []):
+                        if r['student_id'] == my_id:
+                            my_record = r
+                            break
 
                     status = my_record['result'] if my_record else 'absent'
 
                     records.append({
-                        'module_code':  module.get('module_code', ''),
-                        'module_name':  module.get('module_name', ''),
-                        'session_id':   session['session_id'],
-                        'date':         session.get('start_time', '')[:10],
-                        'time':         session.get('start_time', '')[11:16],
-                        'status':       status,
-                        'tap_time':     my_record['tap_time'][:16].replace('T', ' ') if my_record else '—',
+                        'module_code': mod.get('module_code', ''),
+                        'module_name': mod.get('module_name', ''),
+                        'session_id':  sid,
+                        'date':        session.get('start_time', '')[:10],
+                        'time':        session.get('start_time', '')[11:16],
+                        'status':      status,
+                        'tap_time':    my_record['tap_time'][:16].replace('T', ' ') if my_record and my_record.get('tap_time') else '-',
                     })
+                    
+        # apply filters
+        if selected_module:
+            records = [r for r in records if r['module_code'] == selected_module]
+        if selected_status:
+            records = [r for r in records if r['status'] == selected_status]
 
-            # Apply filters
-            if selected_module:
-                records = [r for r in records if r['module_code'] == selected_module]
-            if selected_status:
-                records = [r for r in records if r['status'] == selected_status]
+        # sort newest first
+        records.sort(key=lambda x: x['date'], reverse=True)
 
-            # Sort newest first
-            records.sort(key=lambda x: x['date'], reverse=True)
+    except Exception as e:
+        print("student dashboard error:", e)
+        messages.warning(request, 'Could not load attendance. Is Flask running?')
 
-    except Exception as ex:
-        messages.warning(request, f'Could not load attendance: {ex}')
-
-    # Get unique module codes for filter dropdown
-    all_module_codes = list({r['module_code'] for r in records}) if records else []
+    module_codes = list(set([r['module_code'] for r in records]))
 
     return render(request, 'core/student_dashboard.html', {
-        'records':          records,
-        'student_found':    student_found,
-        'selected_module':  selected_module,
-        'selected_status':  selected_status,
-        'all_module_codes': all_module_codes,
-        'student':          request.user,
+        'records':       records,
+        'student_found': student_found,
+        'selected_module': selected_module,
+        'selected_status': selected_status,
+        'module_codes':  module_codes,
+        'student':       request.user,
+        'summary':       summary,
+        'overall_pct':   overall_pct,
     })
 
 # STUDENT PROFILE VIEW
