@@ -3,7 +3,7 @@ import requests
 from mfrc522 import SimpleMFRC522
 
 
-FLASK_API = "http://172.20.10.3:5000/api" 
+FLASK_API = "http://10.32.21.136:5000/api" 
 DEVICE_ID = "pi-rfid-reader-01"
 
 
@@ -38,13 +38,13 @@ while True:
         status = result.get("result", "unknown")
 
         # Show the result clearly
-        if status == "accepted":
-            print(f"✓ ACCEPTED — {result.get('student_name', '')}")
+        if status in ["present", "late"]:
+            print(f"✓ ACCEPTED — {result.get('student_name', '')} ({status})")
         elif status == "duplicate":
-            print(f"⚠ DUPLICATE — already marked present")
+            print("⚠ DUPLICATE — already marked present")
         else:
             print(f"✗ REJECTED — {result.get('message', '')}")
-
+            
         # Wait 2 seconds before reading again
         # This prevents the same card being scanned twice accidentally
         time.sleep(2)
