@@ -8,6 +8,8 @@ from .decorators import role_required
 from .models import User
 import requests
 from datetime import datetime
+import os
+from django.conf import settings as django_settings
 
 API = settings.FLASK_API_URL
 
@@ -45,18 +47,45 @@ def dashboard(request):
     else:
         return redirect('student_dashboard')
 
+# helper function to check if a photo has been uploaded for a student
+def student_has_photo(student_number):
+    photo_path = os.path.join(
+        django_settings.MEDIA_ROOT,
+        'student_photos',
+        student_number + '.jpg'
+    )
+    return os.path.exists(photo_path)
 
 # ADMIN DASHBOARD
 
 @login_required
 @role_required('admin')
 def admin_dashboard(request):
+    modules = []
     try:
-        modules = requests.get(f"{API}/modules", timeout=5).json().get('modules', [])
-    except Exception:
-        modules = []
-    students = User.objects.filter(role='student')
-    tutors   = User.objects.filter(role='tutor')
+        response = requests.get(API + "/modules")
+        modules = response.json().get('modules', [])
+    except:
+        print("could not connect to flask api")
+
+    # get students and tutors from django database
+    raw_students = User.objects.filter(role='student')
+    tutors       = User.objects.filter(role='tutor')
+
+    # check photo status for each student
+    students = []
+    for s in raw_students:
+        students.append({
+            'id':             s.id,
+            'username':       s.username,
+            'first_name':     s.first_name,
+            'last_name':      s.last_name,
+            'email':          s.email,
+            'student_number': s.student_number,
+            'is_active':      s.is_active,
+            'has_photo':      student_has_photo(s.student_number) if s.student_number else False,
+        })
+
     return render(request, 'core/admin_dashboard.html', {
         'students': students,
         'tutors':   tutors,
@@ -502,41 +531,72 @@ def live_attendance_data(request):
 @login_required
 @role_required('tutor')
 def tutor_module_students(request, module_id):
-    students = []
-    module   = {}
-    active   = {}
+    students_list = []
+    module_info   = {}
+    active_session = {}
+
     try:
-        enrolments   = requests.get(f"{API}/enrolments", timeout=5).json().get('enrolments', [])
-        all_students = requests.get(f"{API}/students", timeout=5).json().get('students', [])
-        module       = requests.get(f"{API}/modules/{module_id}", timeout=5).json()
-        active       = requests.get(f"{API}/sessions/active", timeout=5).json()
+        enrolments   = requests.get(API + "/enrolments").json().get('enrolments', [])
+        all_students = requests.get(API + "/students").json().get('students', [])
+        module_info  = requests.get(API + "/modules/" + str(module_id)).json()
+        active_session = requests.get(API + "/sessions/active").json()
 
-        module_enrolments = [e for e in enrolments if e['module_id'] == module_id]
-        student_map       = {s['student_id']: s for s in all_students}
+        # only enrolments for this module
+        this_module = [e for e in enrolments if e['module_id'] == module_id]
 
-        attendance_map = {}
-        if active.get('session_id'):
-            records = requests.get(
-                f"{API}/sessions/{active['session_id']}/attendance", timeout=5
-            ).json().get('records', [])
-            attendance_map = {r['student_id']: r['result'] for r in records}
+        students_dict = {s['student_id']: s for s in all_students}
 
-        for e in module_enrolments:
-            s = student_map.get(e['student_id'])
-            if s:
-                students.append({
-                    'student_id':     s['student_id'],
-                    'student_number': s['student_number'],
-                    'name':           f"{s['first_name']} {s['last_name']}",
-                    'status':         attendance_map.get(s['student_id'], 'not_scanned'),
-                })
+        # get live attendance if session is active
+        attendance_dict = {}
+        if active_session.get('session_id'):
+            sid = active_session['session_id']
+            att = requests.get(API + "/sessions/" + str(sid) + "/attendance").json()
+            for r in att.get('records', []):
+                attendance_dict[r['student_id']] = r['result']
+
+        # build student rows
+        for enrolment in this_module:
+            sid     = enrolment['student_id']
+            student = students_dict.get(sid)
+            if not student:
+                continue
+
+            live_status = attendance_dict.get(sid, 'not_scanned')
+
+            # get attendance summary for this student
+            percentage     = None
+            classification = 'No sessions yet'
+            try:
+                summary_resp = requests.get(API + "/students/" + str(sid) + "/attendance-summary")
+                if summary_resp.status_code == 200:
+                    summary_data = summary_resp.json()
+                    # find this module in the summary
+                    for mod_summary in summary_data.get('modules', []):
+                        if mod_summary['module_id'] == module_id:
+                            percentage     = mod_summary.get('percentage')
+                            classification = mod_summary.get('classification', 'No sessions yet')
+                            break
+            except:
+                # not critical if this fails
+                pass
+
+            students_list.append({
+                'student_id':     sid,
+                'student_number': student['student_number'],
+                'name':           student['first_name'] + ' ' + student['last_name'],
+                'live_status':    live_status,
+                'percentage':     percentage,
+                'classification': classification,
+            })
+
     except Exception as e:
-        messages.warning(request, f'Could not load data: {e}')
+        print("module students error:", e)
+        messages.warning(request, 'Could not load student list.')
 
     return render(request, 'core/tutor_module_students.html', {
-        'students':       students,
-        'module':         module,
-        'active_session': active,
+        'students':       students_list,
+        'module':         module_info,
+        'active_session': active_session,
     })
 
 
@@ -753,3 +813,51 @@ def tutor_attendance_history(request, module_id):
         'module':   module_info,
         'sessions': sessions_data,
     })
+    
+# upload student photo for facial recognition
+# photo is saved as media/student_photos/<student_number>.jpg
+@login_required
+@role_required('admin')
+def upload_student_photo(request, student_number):
+    if request.method == 'POST':
+        # check a file was actually uploaded
+        if 'photo' not in request.FILES:
+            messages.error(request, 'No file selected.')
+            return redirect('admin_dashboard')
+
+        photo = request.FILES['photo']
+
+        # check file type 
+        allowed_types = ['image/jpeg', 'image/jpg', 'image/png']
+        if photo.content_type not in allowed_types:
+            messages.error(request, 'Only JPG and PNG files are allowed.')
+            return redirect('admin_dashboard')
+
+        # check file extension
+        name_lower = photo.name.lower()
+        if not (name_lower.endswith('.jpg') or name_lower.endswith('.jpeg') or name_lower.endswith('.png')):
+            messages.error(request, 'File must be a JPG or PNG image.')
+            return redirect('admin_dashboard')
+
+        try:
+            # create the folder if it doesnt exist yet
+            photos_folder = os.path.join(django_settings.MEDIA_ROOT, 'student_photos')
+            os.makedirs(photos_folder, exist_ok=True)
+
+            # save as student_number.jpg - replaces old photo if one exists
+            # we always save as .jpg even if it was a png for consistency
+            file_path = os.path.join(photos_folder, student_number + '.jpg')
+
+            # write the file to disk
+            with open(file_path, 'wb+') as destination:
+                for chunk in photo.chunks():
+                    destination.write(chunk)
+
+            messages.success(request, 'Photo uploaded for student ' + student_number + '.')
+            print("photo saved to:", file_path)  # debug
+
+        except Exception as e:
+            print("photo upload error:", e)
+            messages.error(request, 'Could not save photo. Error: ' + str(e))
+
+    return redirect('admin_dashboard')
