@@ -37,12 +37,11 @@ No active session. Go back and start a session first.
 </div>
 <!-- Face recognition placeholder -->
 <div class="col-md-3">
-    <div class="card p-4 text-center" style="border: 2px dashed #dee2e6;">
-    <div class="text-muted small mb-1">Face recognition</div>
-    <div class="text-muted small">Placeholder — Sprint 3</div>
-    <span class="badge bg-secondary mt-2">Not active</span>
+    <div class="card p-4 text-center" id="verification-card" style="border: 2px dashed #dee2e6;">
+    <div class="text-muted small mb-1">Face verification</div>
+    <div class="fw-semibold" id="verification-text">Waiting...</div>
+    <span class="badge bg-secondary mt-2" id="verification-badge">Not checked</span>
     </div>
-</div>
 </div>
 
 <!-- Scanned students table -->
@@ -50,7 +49,7 @@ No active session. Go back and start a session first.
 <div class="card">
 <table class="table table-hover mb-0">
     <thead class="table-light">
-    <tr><th>#</th><th>Student number</th><th>Name</th><th>Time</th><th>Status</th></tr>
+    <tr><th>#</th><th>Student number</th><th>Name</th><th>Time</th><th>Status</th><th>Verification</th></tr>
     </thead>
     <tbody id="scanned-body">
     {% for p in all_scanned %}
@@ -68,10 +67,21 @@ No active session. Go back and start a session first.
             <span class="badge bg-secondary">{{ p.result }}</span>
         {% endif %}
         </td>
+        <td>
+        {% if p.verification_status == 'verified' %}
+            <span class="badge bg-success">Verified</span>
+        {% elif p.verification_status == 'mismatch' %}
+            <span class="badge bg-danger">Mismatch</span>
+        {% elif p.verification_status == 'skipped_no_encoding' %}
+            <span class="badge bg-secondary">No photo</span>
+        {% else %}
+            <span class="badge bg-light text-dark">Not checked</span>
+        {% endif %}
+        </td>
     </tr>
     {% empty %}
     <tr id="empty-row">
-        <td colspan="5" class="text-center text-muted py-3">
+        <td colspan="6" class="text-center text-muted py-3">
         No students scanned yet
         </td>
     </tr>
@@ -91,12 +101,25 @@ if (result === 'late')
     return '<span class="badge bg-warning text-dark">Late</span>';
     return '<span class="badge bg-secondary">' + result + '</span>';
 }
+function verificationBadge(status) {
+    if (status === 'verified')
+        return '<span class="badge bg-success">Verified</span>';
+    if (status === 'mismatch')
+        return '<span class="badge bg-danger">Mismatch</span>';
+    if (status === 'skipped_no_encoding')
+        return '<span class="badge bg-secondary">No photo</span>';
+    return '<span class="badge bg-light text-dark">Not checked</span>';
+}
 
 function updateScanResult(entry) {
     const card   = document.getElementById('scan-result-card');
     const status = document.getElementById('scan-status');
     const name   = document.getElementById('scan-name');
     const time   = document.getElementById('scan-time');
+
+    const verificationCard  = document.getElementById('verification-card');
+    const verificationText  = document.getElementById('verification-text');
+    const verificationBadgeEl = document.getElementById('verification-badge');
 
     if (entry.result === 'present') {
         card.style.borderColor = '#198754';
@@ -114,7 +137,34 @@ function updateScanResult(entry) {
         status.style.color     = '#842029';
         status.textContent     = '✗ ' + entry.result;
     }
-    name.textContent = entry.name     || '';
+
+    if (entry.verification_status === 'verified') {
+        verificationCard.style.borderColor = '#198754';
+        verificationCard.style.background  = '#d1e7dd';
+        verificationText.textContent = 'Face verified';
+        verificationBadgeEl.className = 'badge bg-success mt-2';
+        verificationBadgeEl.textContent = 'Verified';
+    } else if (entry.verification_status === 'mismatch') {
+        verificationCard.style.borderColor = '#dc3545';
+        verificationCard.style.background  = '#f8d7da';
+        verificationText.textContent = 'Face mismatch';
+        verificationBadgeEl.className = 'badge bg-danger mt-2';
+        verificationBadgeEl.textContent = 'Mismatch';
+    } else if (entry.verification_status === 'skipped_no_encoding') {
+        verificationCard.style.borderColor = '#6c757d';
+        verificationCard.style.background  = '#f8f9fa';
+        verificationText.textContent = 'No stored photo';
+        verificationBadgeEl.className = 'badge bg-secondary mt-2';
+        verificationBadgeEl.textContent = 'No photo';
+    } else {
+        verificationCard.style.borderColor = '#dee2e6';
+        verificationCard.style.background  = '';
+        verificationText.textContent = 'Not checked';
+        verificationBadgeEl.className = 'badge bg-light text-dark mt-2';
+        verificationBadgeEl.textContent = 'Not checked';
+    }
+
+    name.textContent = entry.name || '';
     time.textContent = entry.tap_time || '';
 }
 
@@ -122,10 +172,19 @@ function resetScanCard() {
     const card = document.getElementById('scan-result-card');
     card.style.borderColor = '';
     card.style.background  = '';
-    document.getElementById('scan-status').style.color   = '';
-    document.getElementById('scan-status').textContent   = 'Waiting for scan...';
-    document.getElementById('scan-name').textContent     = '';
-    document.getElementById('scan-time').textContent     = '';
+    document.getElementById('scan-status').style.color = '';
+    document.getElementById('scan-status').textContent = 'Waiting for scan...';
+    document.getElementById('scan-name').textContent   = '';
+    document.getElementById('scan-time').textContent   = '';
+
+    const verificationCard = document.getElementById('verification-card');
+    verificationCard.style.borderColor = '#dee2e6';
+    verificationCard.style.background  = '';
+    document.getElementById('verification-text').textContent = 'Waiting...';
+
+    const badge = document.getElementById('verification-badge');
+    badge.className = 'badge bg-secondary mt-2';
+    badge.textContent = 'Not checked';
 }
 
 function refresh() {
@@ -162,7 +221,7 @@ fetch('/tutor/attendance/live-data/')
 
     const tbody = document.getElementById('scanned-body');
     if (all.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No students scanned yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No students scanned yet</td></tr>';
     return;
     }
     const sorted = all.slice().sort((a, b) => new Date(a.tap_time) - new Date(b.tap_time));
@@ -173,6 +232,7 @@ fetch('/tutor/attendance/live-data/')
         <td>${p.name}</td>
         <td>${p.tap_time}</td>
         <td>${statusBadge(p.result)}</td>
+        <td>${verificationBadge(p.verification_status)}</td>
     </tr>
     `).join('');
 })
