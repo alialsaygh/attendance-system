@@ -2,142 +2,194 @@
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-<div>
-    <h5 class="fw-semibold mb-0">
-    {{ module.module_code }} — {{ module.module_name }}
-    </h5>
-    <span class="text-muted small">Enrolled students</span>
-</div>
-<a href="{% url 'tutor_dashboard' %}" class="btn btn-outline-secondary btn-sm">
-    Back to dashboard
-</a>
+    <div>
+        <h5 class="fw-semibold mb-0">
+            {{ module.module_code }} — {{ module.module_name }}
+        </h5>
+        <span class="text-muted small">Enrolled students</span>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'tutor_attendance_history' module.module_id %}"
+            class="btn btn-outline-secondary btn-sm">
+            View history
+        </a>
+        <a href="{% url 'tutor_dashboard' %}"
+            class="btn btn-outline-secondary btn-sm">
+            Back
+        </a>
+    </div>
 </div>
 
 {% if active_session.session_id %}
 <div class="alert alert-success mb-4">
-<strong>Session active</strong> — attendance updates every 3 seconds
+    <strong>Session active</strong>
+    &mdash; live status updates every 3 seconds
 </div>
 {% else %}
 <div class="alert alert-warning mb-3">
-No active session — start a session to record attendance
+    No active session — percentages are based on closed sessions only
 </div>
 {% endif %}
 
-<!-- Summary -->
+<!-- summary counts -->
 <div class="row g-3 mb-4">
-<div class="col-md-2">
-    <div class="card text-center p-3">
-    <div class="text-muted small">Total enrolled</div>
-    <div class="fs-3 fw-semibold">{{ students|length }}</div>
+    <div class="col-md-2">
+        <div class="card text-center p-3">
+            <div class="text-muted small">Enrolled</div>
+            <div class="fs-3 fw-semibold">{{ students|length }}</div>
+        </div>
     </div>
-</div>
-<div class="col-md-2">
-    <div class="card text-center p-3">
-    <div class="text-muted small">Present</div>
-    <div class="fs-3 fw-semibold text-success" id="count-present">
-        {% for s in students %}{% if s.status == 'present' %}{% with count=forloop.counter %}{% endwith %}{% endif %}{% endfor %}
-        {{ students|length }}
+    {% if active_session.session_id %}
+    <div class="col-md-2">
+        <div class="card text-center p-3">
+            <div class="text-muted small">Present</div>
+            <div class="fs-3 fw-semibold text-success"
+                id="count-present">0</div>
+        </div>
     </div>
+    <div class="col-md-2">
+        <div class="card text-center p-3">
+            <div class="text-muted small">Late</div>
+            <div class="fs-3 fw-semibold text-warning"
+                id="count-late">0</div>
+        </div>
     </div>
-</div>
-<div class="col-md-2">
-    <div class="card text-center p-3">
-    <div class="text-muted small">Late</div>
-    <div class="fs-3 fw-semibold text-warning" id="count-late">—</div>
+    <div class="col-md-2">
+        <div class="card text-center p-3">
+            <div class="text-muted small">Not scanned</div>
+            <div class="fs-3 fw-semibold text-secondary"
+                id="count-not-scanned">{{ students|length }}</div>
+        </div>
     </div>
-</div>
-<div class="col-md-2">
-    <div class="card text-center p-3">
-    <div class="text-muted small">Not scanned</div>
-    <div class="fs-3 fw-semibold text-danger" id="count-absent">—</div>
-    </div>
-</div>
+    {% endif %}
 </div>
 
-<!-- Student list -->
+<!-- student table -->
 <div class="card">
-<table class="table table-hover mb-0" id="student-table">
-    <thead class="table-light">
-    <tr>
-        <th>#</th>
-        <th>Student number</th>
-        <th>Name</th>
-        <th>Attendance status</th>
-    </tr>
-    </thead>
-    <tbody id="student-body">
-    {% for s in students %}
-    <tr>
-        <td>{{ forloop.counter }}</td>
-        <td>{{ s.student_number }}</td>
-        <td>{{ s.name }}</td>
-        <td>
-        {% if s.status == 'present' %}
-            <span class="badge bg-success">Present</span>
-        {% elif s.status == 'late' %}
-            <span class="badge bg-warning text-dark">Late</span>
-        {% elif s.status == 'absent' %}
-            <span class="badge bg-danger">Absent</span>
-        {% else %}
-            <span class="badge bg-secondary">Not scanned yet</span>
-        {% endif %}
-        </td>
-    </tr>
-    {% empty %}
-    <tr>
-        <td colspan="4" class="text-center text-muted py-3">
-        No students enrolled in this module yet
-        </td>
-    </tr>
-    {% endfor %}
-    </tbody>
-</table>
+    <table class="table table-hover mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>#</th>
+                <th>Student number</th>
+                <th>Name</th>
+                <th>Overall %</th>
+                <th>Classification</th>
+                {% if active_session.session_id %}
+                <th>This session</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody id="student-body">
+            {% for s in students %}
+            <tr data-student-number="{{ s.student_number }}">
+                <td>{{ forloop.counter }}</td>
+                <td>{{ s.student_number }}</td>
+                <td>{{ s.name }}</td>
+
+                <!-- percentage -->
+                <td>
+                {% if s.percentage is not None %}
+                    <span class="fw-semibold">{{ s.percentage }}%</span>
+                {% else %}
+                    <span class="text-muted small">N/A</span>
+                {% endif %}
+                </td>
+
+                <!-- classification badge -->
+                <td>
+                    {% if s.classification == 'On Time' %}
+                        <span class="badge bg-success">On Time</span>
+                    {% elif s.classification == 'Frequently Late' %}
+                        <span class="badge bg-warning text-dark">Frequently Late</span>
+                    {% elif s.classification == 'Irregular' %}
+                        <span class="badge text-white"
+                            style="background:#E8593C;">Irregular</span>
+                    {% elif s.classification == 'At Risk' %}
+                        <span class="badge bg-danger">At Risk</span>
+                    {% else %}
+                        <span class="badge bg-secondary">
+                            {{ s.classification }}
+                        </span>
+                    {% endif %}
+                </td>
+
+                <!-- live session status -->
+                {% if active_session.session_id %}
+                <td class="live-status-cell">
+                    {% if s.live_status == 'present' %}
+                        <span class="badge bg-success">Present</span>
+                    {% elif s.live_status == 'late' %}
+                        <span class="badge bg-warning text-dark">Late</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Not scanned</span>
+                    {% endif %}
+                </td>
+                {% endif %}
+
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center text-muted py-3">
+                    No students enrolled in this module yet
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
-<!-- Auto refresh every 3 seconds if session is active -->
+<!-- auto refresh live status if session is active -->
 {% if active_session.session_id %}
 <script>
-function refreshStudents() {
-fetch('/tutor/attendance/live-data/')
-    .then(r => r.json())
-    .then(data => {
-    const present = data.present || [];
-    const late    = data.late    || [];
-    const total   = {{ students|length }};
-    const scanned = present.length + late.length;
+function refreshLiveStatus() {
+    fetch('/tutor/attendance/live-data/')
+        .then(r => {
+            if (r.status === 401) { window.location.href = '/login/'; return null; }
+            if (r.status === 403) return null;
+            return r.json();
+        })
+        .then(data => {
+            if (!data) return;
 
-    document.getElementById('count-present').textContent = present.length;
-    document.getElementById('count-late').textContent    = late.length;
-    document.getElementById('count-absent').textContent  = total - scanned;
+            const present = data.present || [];
+            const late    = data.late    || [];
+            const total   = {{ students|length }};
+            const scanned = present.length + late.length;
 
-      // Build a map of student_number to status
-    const statusMap = {};
-    present.forEach(p => statusMap[p.student_number] = 'present');
-    late.forEach(p => statusMap[p.student_number] = 'late');
+            // update counters
+            const cp = document.getElementById('count-present');
+            const cl = document.getElementById('count-late');
+            const cn = document.getElementById('count-not-scanned');
+            if (cp) cp.textContent = present.length;
+            if (cl) cl.textContent = late.length;
+            if (cn) cn.textContent = total - scanned;
 
-      // Update each row
-    const rows = document.querySelectorAll('#student-body tr');
-    rows.forEach(row => {
-        const numCell  = row.cells[1];
-        const statCell = row.cells[3];
-        if (!numCell || !statCell) return;
+            // build status map by student number
+            const statusMap = {};
+            present.forEach(p => statusMap[p.student_number] = 'present');
+            late.forEach(p => statusMap[p.student_number] = 'late');
 
-        const num    = numCell.textContent.trim();
-        const status = statusMap[num] || 'not_scanned';
+            // update each row live status cell
+            document.querySelectorAll('#student-body tr').forEach(row => {
+                const num  = row.dataset.studentNumber;
+                const cell = row.querySelector('.live-status-cell');
+                if (!num || !cell) return;
 
-        if (status === 'present') {
-        statCell.innerHTML = '<span class="badge bg-success">Present</span>';
-        } else if (status === 'late') {
-        statCell.innerHTML = '<span class="badge bg-warning text-dark">Late</span>';
-        } else {
-        statCell.innerHTML = '<span class="badge bg-secondary">Not scanned yet</span>';
-        }
-    });
-    })
+                const status = statusMap[num] || 'not_scanned';
+                if (status === 'present') {
+                    cell.innerHTML = '<span class="badge bg-success">Present</span>';
+                } else if (status === 'late') {
+                    cell.innerHTML = '<span class="badge bg-warning text-dark">Late</span>';
+                } else {
+                    cell.innerHTML = '<span class="badge bg-secondary">Not scanned</span>';
+                }
+            });
+        })
     .catch(() => {});
 }
-setInterval(refreshStudents, 3000);
-refreshStudents();
+
+setInterval(refreshLiveStatus, 3000);
+refreshLiveStatus();
 </script>
 {% endif %}
 
