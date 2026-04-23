@@ -19,6 +19,7 @@ urlpatterns = [
     path('dashboard/admin/cards/assign/', views.assign_card, name='assign_card'),
     path('dashboard/admin/students/enrol/',  views.enrol_student, name='enrol_student'),
     path('dashboard/admin/attendance/',views.admin_attendance, name='admin_attendance'),
+    path('dashboard/admin/students/<str:student_number>/upload-photo/',views.upload_student_photo, name='upload_student_photo'),
 
     # Tutor 
     path('tutor/dashboard/',views.tutor_dashboard, name='tutor_dashboard'),
