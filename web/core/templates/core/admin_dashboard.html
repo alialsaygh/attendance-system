@@ -55,41 +55,92 @@
     </form>
 </div>
 
+<!-- students table -->
 <h6 class="fw-semibold mb-2">Students</h6>
 <div class="card mb-4">
     <div class="table-responsive">
         <table class="table table-hover mb-0">
             <thead class="table-light">
-                <tr><th>ID</th><th>Number</th><th>Name</th><th>Email</th><th>Status</th><th>Action</th></tr>
+                <tr>
+                    <th>ID</th>
+                    <th>Number</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Photo</th>
+                    <th>Actions</th>
+                </tr>
             </thead>
             <tbody>
                 {% for s in students %}
                 <tr>
-                <td>{{ s.id }}</td>
-                <td>{{ s.student_number }}</td>
-                <td>{{ s.first_name }} {{ s.last_name }}</td>
-                <td>{{ s.email }}</td>
-                <td>
-                    {% if s.is_active %}
-                    <span class="badge bg-success">Active</span>
-                    {% else %}
-                    <span class="badge bg-secondary">Inactive</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if s.id %}
-                    <form method="post" action="{% url 'delete_student' s.id %}">
-                        {% csrf_token %}
-                        <button class="btn btn-sm btn-danger">Remove</button>
-                    </form>
-                    {% else %}
-                    <span class="text-muted">No ID</span>
-                    {% endif %}
-                </td>
+                    <td>{{ s.id }}</td>
+                    <td>{{ s.student_number }}</td>
+                    <td>{{ s.first_name }} {{ s.last_name }}</td>
+                    <td>{{ s.email }}</td>
+                    <td>
+                        {% if s.is_active %}
+                            <span class="badge bg-success">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <!-- photo indicator - task #197 -->
+                    <td>
+                        {% if s.has_photo %}
+                            <span class="badge bg-success">Yes</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">No</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- actions column  -->
+                    <td>
+                        <div class="d-flex gap-1 flex-wrap">
+
+                            <!-- delete student button -->
+                            {% if s.id %}
+                            <form method="post" action="{% url 'delete_student' s.id %}">
+                                {% csrf_token %}
+                                <button class="btn btn-sm btn-danger">
+                                    Remove
+                                </button>
+                            </form>
+                            {% endif %}
+
+                            <!-- upload photo form - task #193 -->
+                            {% if s.student_number %}
+                            <form method="post"
+                                action="{% url 'upload_student_photo' s.student_number %}"
+                                enctype="multipart/form-data"
+                                class="d-flex gap-1 align-items-center">
+                                {% csrf_token %}
+                                <input type="file"
+                                    name="photo"
+                                    accept=".jpg,.jpeg,.png"
+                                    class="form-control form-control-sm"
+                                    style="width: 160px;"
+                                    required>
+                                <button class="btn btn-sm btn-primary">
+                                    {% if s.has_photo %}
+                                        Replace photo
+                                    {% else %}
+                                        Upload photo
+                                    {% endif %}
+                                </button>
+                            </form>
+                            {% endif %}
+
+                        </div>
+                    </td>
                 </tr>
-                    {% empty %}
-                    <tr><td colspan="6" class="text-center text-muted">No students yet</td></tr>
-                    {% endfor %}
+                {% empty %}
+                <tr>
+                    <td colspan="7"class="text-center text-muted py-3">
+                        No students yet
+                    </td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
     </div>
