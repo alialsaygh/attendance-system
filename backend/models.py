@@ -52,6 +52,7 @@ class AttendanceRecord(db.Model):
     tap_time = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     device_id = db.Column(db.String(100), nullable=True)
     result = db.Column(db.String(50), nullable=False)  # accepted/duplicate/rejected...
+    verification_status = db.Column(db.String(50), nullable=False, default="not_checked")
 
     __table_args__ = (
         db.UniqueConstraint("session_id", "student_id", name="uq_session_student_once"),

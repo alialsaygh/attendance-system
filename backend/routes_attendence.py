@@ -1,6 +1,9 @@
+#from unittest import result
 from flask import Blueprint, request, jsonify
 from datetime import datetime
+#from numpy import record
 from models import db, Session, Module, Card, Enrolment, AttendanceRecord, Student
+
 
 attendance_bp = Blueprint("attendance_bp", __name__)
 
@@ -28,10 +31,14 @@ def calculate_attendance_percentage(student_id, module_id):
 
 @attendance_bp.post("/attendance/scan")
 def scan_attendance():
-    data      = request.get_json(silent=True) or {}
-    card_uid  = (data.get("card_uid") or "").strip()
+    data = request.get_json(silent=True) or {}
+    card_uid = (data.get("card_uid") or "").strip()
     device_id = (data.get("device_id") or "").strip() or None
-
+    verification_status = (data.get("verification_status") or "not_checked").strip()
+    allowed_statuses = ["verified", "mismatch", "skipped_no_encoding", "not_checked"]
+    if verification_status not in allowed_statuses:
+        verification_status = "not_checked"
+    
     if not card_uid:
         return jsonify({"error": "missing_fields", "message": "Missing card_uid"}), 400
 
@@ -64,34 +71,40 @@ def scan_attendance():
     ).first()
     if existing:
         return jsonify({
-            "result":       "duplicate",
-            "message":      "Already marked present",
-            "student_name": f"{student.first_name} {student.last_name}",
+        "result": "duplicate",
+        "message": "Already marked present",
+        "student_name": f"{student.first_name} {student.last_name}",
+        "verification_status": existing.verification_status,
         }), 200
 
     now = datetime.utcnow()
     minutes_since_start = (now - active.start_time).total_seconds() / 60
     result = "present" if minutes_since_start <= LATE_THRESHOLD_MINUTES else "late"
 
+    verification = verify_student_face(student.student_number)
+
     record = AttendanceRecord(
-        session_id=active.session_id,
-        student_id=student.student_id,
-        tap_time=now,
-        device_id=device_id,
-        result=result
+    session_id=active.session_id,
+    student_id=student.student_id,
+    tap_time=now,
+    device_id=device_id,
+    result=result,
+    verification_status=verification_status
     )
     db.session.add(record)
     db.session.commit()
 
     return jsonify({
-        "result":       result,
-        "session_id":   active.session_id,
-        "module_id":    active.module_id,
-        "student_id":   student.student_id,
-        "student_name": f"{student.first_name} {student.last_name}",
-        "tap_time":     record.tap_time.isoformat(),
-        "minutes_since_start": round(minutes_since_start, 1),
-    }), 200
+    "result": result,
+    "session_id": active.session_id,
+    "module_id": active.module_id,
+    "student_id": student.student_id,
+    "student_name": f"{student.first_name} {student.last_name}",
+    "tap_time": record.tap_time.isoformat(),
+    "minutes_since_start": round(minutes_since_start, 1),
+    "verification_status": verification["verification_status"],
+    "verification_status": record.verification_status,
+}), 200
 
 
 @attendance_bp.get("/sessions/<int:session_id>/attendance")
@@ -110,11 +123,12 @@ def get_session_attendance(session_id: int):
         s = Student.query.get(r.student_id)
         if s:
             all_records.append({
-                "student_id":     s.student_id,
+                "student_id": s.student_id,
                 "student_number": s.student_number,
-                "name":           f"{s.first_name} {s.last_name}",
-                "tap_time":       r.tap_time.isoformat(),
-                "result":         r.result,
+                "name": f"{s.first_name} {s.last_name}",
+                "tap_time": r.tap_time.isoformat(),
+                "result": r.result,
+                "verification_status": r.verification_status,
             })
 
     present = [r for r in all_records if r["result"] == "present"]
@@ -153,11 +167,12 @@ def get_active_attendance():
         if not s:
             continue
         entry = {
-            "student_id":     s.student_id,
+            "student_id": s.student_id,
             "student_number": s.student_number,
-            "name":           f"{s.first_name} {s.last_name}",
-            "tap_time":       r.tap_time.isoformat(),
-            "result":         r.result,
+            "name": f"{s.first_name} {s.last_name}",
+            "tap_time": r.tap_time.isoformat(),
+            "result": r.result,
+            "verification_status": r.verification_status,
         }
         if r.result == "present":
             present.append(entry)
