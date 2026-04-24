@@ -35,9 +35,6 @@ def scan_attendance():
     card_uid = (data.get("card_uid") or "").strip()
     device_id = (data.get("device_id") or "").strip() or None
     verification_status = (data.get("verification_status") or "not_checked").strip()
-    allowed_statuses = ["verified", "mismatch", "skipped_no_encoding", "not_checked"]
-    if verification_status not in allowed_statuses:
-        verification_status = "not_checked"
     
     if not card_uid:
         return jsonify({"error": "missing_fields", "message": "Missing card_uid"}), 400
@@ -81,8 +78,6 @@ def scan_attendance():
     minutes_since_start = (now - active.start_time).total_seconds() / 60
     result = "present" if minutes_since_start <= LATE_THRESHOLD_MINUTES else "late"
 
-    verification = verify_student_face(student.student_number)
-
     record = AttendanceRecord(
     session_id=active.session_id,
     student_id=student.student_id,
@@ -102,7 +97,6 @@ def scan_attendance():
     "student_name": f"{student.first_name} {student.last_name}",
     "tap_time": record.tap_time.isoformat(),
     "minutes_since_start": round(minutes_since_start, 1),
-    "verification_status": verification["verification_status"],
     "verification_status": record.verification_status,
 }), 200
 
