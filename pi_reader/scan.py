@@ -39,6 +39,7 @@ while True:
         print(f"Student linked to card: {student_name} ({student_number})")
 
         # Step 2: verify face locally on the Pi
+        print("Please look at the camera...")
         verification = verify_student_face(student_number)
         verification_status = verification.get("verification_status", "not_checked")
         verification_message = verification.get("message", "")
@@ -53,7 +54,7 @@ while True:
                 "device_id": DEVICE_ID,
                 "verification_status": verification_status,
             },
-            timeout=5
+            timeout=8
         )
 
         result = response.json()
