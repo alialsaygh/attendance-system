@@ -27,9 +27,11 @@ def load_encodings():
     return known
 
 
+
 def verify_student_face(student_number, tolerance=0.5):
     known = load_encodings()
     student_number = str(student_number)
+    
 
     if student_number not in known:
         return {
@@ -37,22 +39,18 @@ def verify_student_face(student_number, tolerance=0.5):
             "message": "No stored encoding for this student."
         }
     picam2 = Picamera2()
+    picam2.configure(picam2.create_preview_configuration())
 
     try:
-        picam2.start()
         frame = picam2.capture_array()
     except Exception as e:
         return {
             "verification_status": "not_checked",
             "message": "Camera could not be opened: " + str(e)
         }
-    finally:
-        try:
-            picam2.stop()
-        except Exception:
-            pass
 
     rgb = frame[:, :, :3]
+
     face_locations = face_recognition.face_locations(rgb)
     face_encodings = face_recognition.face_encodings(rgb, face_locations)
 
@@ -83,3 +81,6 @@ def verify_student_face(student_number, tolerance=0.5):
         "verification_status": "mismatch",
         "message": "Face mismatch."
     }
+   
+
+
