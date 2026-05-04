@@ -102,7 +102,7 @@ def get_attendance_summary(student_id):
         if not module:
             continue
 
-        # only count closed sessions - active ones are not finished yet
+        # only count closed sessions 
         closed_sessions = Session.query.filter_by(
             module_id=e.module_id,
             status='closed'
@@ -111,7 +111,6 @@ def get_attendance_summary(student_id):
         total_sessions = len(closed_sessions)
 
         if total_sessions == 0:
-            # no sessions run yet for this module
             module_summaries.append({
                 'module_id':   module.module_id,
                 'module_code': module.module_code,
@@ -161,7 +160,7 @@ def get_attendance_summary(student_id):
         else:
             late_percentage = 0.0
 
-        # classification using rule based thresholds
+        # classification using rule
         # needs at least 3 sessions to classify
         if total_sessions < 3:
             classification = 'Insufficient data'

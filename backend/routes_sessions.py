@@ -45,7 +45,6 @@ def start_session(session_id: int):
     if not s:
         return jsonify({"error": "not_found", "message": "Session not found"}), 404
 
-    # Sprint 1: only 1 active session at a time
     active = Session.query.filter_by(status="active").first()
     if active and active.session_id != session_id:
         return jsonify({"error": "active_session_exists", "message": "Another session is already active"}), 409
@@ -85,7 +84,7 @@ def close_session(session_id: int):
 
     absent_count = 0
     for enrolment in enrolments:
-        # Check if student has any attendance record for this session
+        # if student has any attendance record for this session
         existing = AttendanceRecord.query.filter_by(
             session_id=session_id,
             student_id=enrolment.student_id

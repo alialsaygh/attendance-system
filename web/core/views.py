@@ -601,7 +601,7 @@ def tutor_module_students(request, module_id):
 
 
 # STUDENT DASHBOARD 
-# ── STUDENT ATTENDANCE VIEW ────────────────────────────────
+
 @login_required
 @role_required('student')
 def student_dashboard(request):
@@ -844,7 +844,7 @@ def upload_student_photo(request, student_number):
             photos_folder = os.path.join(django_settings.MEDIA_ROOT, 'student_photos')
             os.makedirs(photos_folder, exist_ok=True)
 
-            # save as student_number.jpg - replaces old photo if one exists
+            # save as student_number.jpg 
             # we always save as .jpg even if it was a png for consistency
             file_path = os.path.join(photos_folder, student_number + '.jpg')
 

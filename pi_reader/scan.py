@@ -20,7 +20,7 @@ while True:
         card_uid = str(card_id)
         print(f"\nCard detected: {card_uid}")
 
-        # Step 1: ask Flask which student belongs to this card
+        # Step 1 ask Flask which student belongs to this card
         lookup_response = requests.get(
             f"{FLASK_API}/cards/{card_uid}/student",
             timeout=5
@@ -38,7 +38,7 @@ while True:
 
         print(f"Student linked to card: {student_name} ({student_number})")
 
-        # Step 2: verify face locally on the Pi
+        # Step 2 verify face locally on the Pi
         print("Please look at the camera...")
         verification = verify_student_face(student_number)
         verification_status = verification.get("verification_status", "not_checked")
@@ -46,7 +46,7 @@ while True:
 
         print(f"Face check: {verification_status} — {verification_message}")
 
-        # Step 3: send final attendance scan to Flask
+        # Step 3 send final attendance scan to Flask
         response = requests.post(
             f"{FLASK_API}/attendance/scan",
             json={

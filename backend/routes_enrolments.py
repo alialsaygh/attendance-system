@@ -16,7 +16,6 @@ def create_enrolment():
             "message": f"Missing required fields: {', '.join(missing)}"
         }), 400
 
-    # Convert to int safely
     try:
         student_id = int(data["student_id"])
         module_id = int(data["module_id"])
@@ -26,15 +25,15 @@ def create_enrolment():
             "message": "student_id and module_id must be integers"
         }), 400
 
-    # Check student exists
+    # if student exists
     if not Student.query.get(student_id):
         return jsonify({"error": "student_not_found", "message": "Student not found"}), 404
 
-    # Check module exists
+    # if module exists
     if not Module.query.get(module_id):
         return jsonify({"error": "module_not_found", "message": "Module not found"}), 404
 
-    # Check already enrolled (unique student+module)
+    # if already enrolled (unique student+module)
     if Enrolment.query.filter_by(student_id=student_id, module_id=module_id).first():
         return jsonify({"error": "already_enrolled", "message": "Student already enrolled"}), 409
 
