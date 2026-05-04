@@ -63,17 +63,17 @@ while True:
 
         if status in ["present", "late"]:
             if returned_verification == "verified":
-                print(f"✓ ACCEPTED — {result.get('student_name', '')} ({status}) [VERIFIED]")
+                print(f"ACCEPTED — {result.get('student_name', '')} ({status}) [VERIFIED]")
             elif returned_verification == "mismatch":
-                print(f"⚠ ACCEPTED — {result.get('student_name', '')} ({status}) [MISMATCH]")
+                print(f"ACCEPTED — {result.get('student_name', '')} ({status}) [MISMATCH]")
             elif returned_verification == "skipped_no_encoding":
-                print(f"✓ ACCEPTED — {result.get('student_name', '')} ({status}) [NO PHOTO]")
+                print(f"ACCEPTED — {result.get('student_name', '')} ({status}) [NO PHOTO]")
             else:
-                print(f"✓ ACCEPTED — {result.get('student_name', '')} ({status})")
+                print(f"ACCEPTED — {result.get('student_name', '')} ({status})")
         elif status == "duplicate":
-            print("⚠ DUPLICATE — already marked present")
+            print("DUPLICATE — already marked present")
         else:
-            print(f"✗ REJECTED — {result.get('message', '')}")
+            print(f"REJECTED — {result.get('message', '')}")
 
         time.sleep(2)
 
