@@ -3,7 +3,7 @@ import requests
 from mfrc522 import SimpleMFRC522
 from verify_face import verify_student_face
 
-FLASK_API = "http://172.20.10.3:5000/api"
+FLASK_API = "http://10.32.17.245:5000/api"
 DEVICE_ID = "pi-rfid-reader-01"
 
 reader = SimpleMFRC522()
